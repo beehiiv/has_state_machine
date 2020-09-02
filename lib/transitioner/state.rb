@@ -18,6 +18,10 @@ module Transitioner
     ##
     # Retrieves the next available transitions for a given state.
     delegate :possible_transitions, to: "self.class"
+
+    ##
+    # Add errors to the ActiveRecord object rather than the Transitioner::State
+    # class.
     delegate :errors, to: :object
 
     ##
