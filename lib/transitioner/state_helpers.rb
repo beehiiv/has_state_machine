@@ -15,7 +15,7 @@ module Transitioner
       ##
       # Validating any changes to the status attribute are represented by
       # classes within the state machine and have a valid Transitioner::State class.
-      validates state_attribute, inclusion: {in: workflow_states}, presence: true
+      validates state_attribute, inclusion: { in: workflow_states }, presence: true
       validate :state_class_defined?
 
       ##

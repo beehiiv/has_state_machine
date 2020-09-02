@@ -40,9 +40,9 @@ module Transitioner
     #
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state)
-      return false unless should_transition_to?(desired_state)
+      return false unless should_transition_to?(desired_state.to_s)
 
-      state_instance(desired_state).perform_transition!
+      state_instance(desired_state.to_s).perform_transition!
     end
 
     ##
@@ -60,18 +60,13 @@ module Transitioner
     # Determines if the given desired state exists in the predetermined
     # list of allowed transitions.
     def can_transition?(desired_state)
-      self.class.possible_transitions.include? desired_state.to_sym
+      possible_transitions.include? desired_state.to_sym
     end
 
     def should_transition_to?(desired_state)
-      return false unless object.valid?
-
-      state_instance = state_instance(desired_state)
-
-      can_transition?(desired_state) &&
-        state_instance.present? &&
-        state_instance.valid? &&
-        object.errors.empty?
+      object.valid? &&
+        can_transition?(desired_state) &&
+        state_instance(desired_state)&.valid?
     end
 
     def state_instance(desired_state)
