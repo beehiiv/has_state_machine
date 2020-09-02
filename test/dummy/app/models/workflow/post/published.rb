@@ -9,7 +9,7 @@ module Workflow
     def title_exists?
       return if object.title.present?
 
-      object.errors.add(:title, "can't be blank")
+      errors.add(:title, "can't be blank")
     end
   end
 end

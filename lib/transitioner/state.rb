@@ -18,6 +18,7 @@ module Transitioner
     ##
     # Retrieves the next available transitions for a given state.
     delegate :possible_transitions, to: "self.class"
+    delegate :errors, to: :object
 
     ##
     # Initializes the Transitioner::State instance.
@@ -64,14 +65,8 @@ module Transitioner
     end
 
     def should_transition_to?(desired_state)
-      return false unless object.valid?
-
-      state_instance = state_instance(desired_state)
-
       can_transition?(desired_state) &&
-        state_instance.present? &&
-        state_instance.valid? &&
-        object.errors.empty?
+        state_instance(desired_state)&.valid?
     end
 
     def state_instance(desired_state)
