@@ -1,5 +1,7 @@
 # Transitioner
-Short description and motivation.
+
+[![Build Status](https://github.com/bharget/transitioner/workflows/Tests/badge.svg)](https://github.com/bharget/transitioner/actions)
+[![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
 
 ## Usage
 How to use my plugin.
