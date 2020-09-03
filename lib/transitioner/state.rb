@@ -60,13 +60,18 @@ module Transitioner
     # Determines if the given desired state exists in the predetermined
     # list of allowed transitions.
     def can_transition?(desired_state)
-      possible_transitions.include? desired_state.to_sym
+      possible_transitions.include? desired_state
     end
 
     def should_transition_to?(desired_state)
-      object.valid? &&
-        can_transition?(desired_state) &&
-        state_instance(desired_state)&.valid?
+      return false unless object.valid?
+
+      state_instance = state_instance(desired_state)
+
+      can_transition?(desired_state) &&
+        state_instance.present? &&
+        state_instance.valid? &&
+        object.errors.empty?
     end
 
     def state_instance(desired_state)
@@ -81,7 +86,7 @@ module Transitioner
       # Setter for the Transitioner::State classes to define the possible
       # states the current state can transition to.
       def transitions_to(states)
-        @possible_transitions = states.map(&:to_sym)
+        @possible_transitions = states.map(&:to_s)
       end
     end
   end
