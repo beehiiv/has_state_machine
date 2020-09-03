@@ -40,9 +40,9 @@ module Transitioner
     #
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state)
-      return false unless should_transition_to?(desired_state)
+      return false unless should_transition_to?(desired_state.to_s)
 
-      state_instance(desired_state).perform_transition!
+      state_instance(desired_state.to_s).perform_transition!
     end
 
     ##
@@ -60,7 +60,7 @@ module Transitioner
     # Determines if the given desired state exists in the predetermined
     # list of allowed transitions.
     def can_transition?(desired_state)
-      self.class.possible_transitions.include? desired_state.to_sym
+      possible_transitions.include? desired_state
     end
 
     def should_transition_to?(desired_state)
@@ -86,7 +86,7 @@ module Transitioner
       # Setter for the Transitioner::State classes to define the possible
       # states the current state can transition to.
       def transitions_to(states)
-        @possible_transitions = states.map(&:to_sym)
+        @possible_transitions = states.map(&:to_s)
       end
     end
   end
