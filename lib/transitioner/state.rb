@@ -69,7 +69,8 @@ module Transitioner
     end
 
     def should_transition_to?(desired_state)
-      can_transition?(desired_state) &&
+      object.valid? &&
+        can_transition?(desired_state) &&
         state_instance(desired_state)&.valid?
     end
 
