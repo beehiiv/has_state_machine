@@ -5,31 +5,34 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby:
-          - '2.5.x'
-          - '2.6.x'
-        rails:
-          - 'rails_5_2'
-          - 'rails_6_0'
+        ruby: [2.5, 2.6, 2.7]
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-      - name: Setup System
-        run: |
-          sudo apt-get install libsqlite3-dev
+        uses: actions/checkout@master
+
       - name: Setup Ruby
         uses: actions/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
-      - name: Bundle
-        env:
-          MTSR_RAILS_VERSION: ${{ matrix.rails }}
+
+      - name: Cache Gems
+        uses: actions/cache@v2
+        with:
+          path: vendor/bundle
+          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-gems-
+
+      - name: Install Dependencies
         run: |
-          export BUNDLE_GEMFILE="${GITHUB_WORKSPACE}/gemfiles/${MTSR_RAILS_VERSION}.gemfile"
-          gem uninstall -aIx bundler
-          gem install bundler -v 1.17.3
-          bundle install --jobs 4 --retry 3
+          sudo apt-get update
+          sudo apt-get install libsqlite3-dev
+          gem update --system
+          gem install bundler
+          bundle install --path vendor/bundle --jobs 4 --retry 3
+
       - name: Lint
-        run: bundle exec standardrb
-      - name: Test
-        run: bin/test
+        run: bundle exec rake lint
+
+      - name: Tests
+        run: bundle exec rake test:all
