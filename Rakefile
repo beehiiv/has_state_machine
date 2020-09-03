@@ -21,5 +21,5 @@ task :test do
 end
 
 task :lint do
-  sh "bundle exec standardrb"
+  sh "bin/standardrb --no-fix"
 end
