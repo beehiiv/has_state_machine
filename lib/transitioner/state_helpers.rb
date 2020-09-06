@@ -17,6 +17,7 @@ module Transitioner
       # classes within the state machine and have a valid Transitioner::State class.
       validates state_attribute, inclusion: {in: workflow_states}, presence: true
       validate :state_class_defined?
+      validate :state_instance_validations
 
       ##
       # Overwrites the default getter for the state attribute to
@@ -79,7 +80,18 @@ module Transitioner
       # True unless unable to find the Transitioner::State class for the current
       # state.
       def state_class_defined?
-        errors.add(state_attribute, :not_implemented, message: "class must be implemented") unless state_class.present?
+        return if state_class.present?
+
+        errors.add(state_attribute, :not_implemented, message: "class must be implemented")
+      end
+
+      ##
+      # Runs the validations defined on the current Transitioner::State when calling
+      # model.valid?
+      def state_instance_validations
+        return unless state_class.present?
+
+        public_send(state_attribute.to_s).valid?
       end
     end
 

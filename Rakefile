@@ -1,29 +1,25 @@
 # frozen_string_literal: true
 
-begin
-  require "bundler/setup"
-rescue LoadError
-  puts "You must `gem install bundler` and `bundle install` to run rake tasks"
-end
-
-require "rdoc/task"
-
-RDoc::Task.new(:rdoc) do |rdoc|
-  rdoc.rdoc_dir = "rdoc"
-  rdoc.title = "Transitioner"
-  rdoc.options << "--line-numbers"
-  rdoc.rdoc_files.include("README.md")
-  rdoc.rdoc_files.include("lib/**/*.rb")
-end
-
 require "bundler/gem_tasks"
 
-require "rake/testtask"
+task default: %i[lint test]
 
-Rake::TestTask.new(:test) do |t|
-  t.libs << "test"
-  t.pattern = "test/**/*_test.rb"
-  t.verbose = false
+namespace :test do
+  task :refresh do
+    sh "bin/appraisal clean"
+    sh "bin/appraisal generate"
+  end
+
+  task :all do
+    sh "bin/appraisal install"
+    sh "bin/appraisal bin/rake test"
+  end
 end
 
-task default: :test
+task :test do
+  sh "bin/test"
+end
+
+task :lint do
+  sh "bin/standardrb --no-fix"
+end
