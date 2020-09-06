@@ -42,14 +42,16 @@ module Transitioner
     # transition.
     #
     # @param desired_state [String] the state to transition to
+    # @param options [Hash] a hash of additional options for
+    #   transitioning the object
     #
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state, **options)
-      handle_transition_options(options)
+      with_transition_options(options) do
+        return false unless valid_transition?(desired_state.to_s)
 
-      return false unless should_transition_to?(desired_state.to_s)
-
-      state_instance(desired_state.to_s).perform_transition!
+        state_instance(desired_state.to_s).perform_transition!
+      end
     end
 
     ##
@@ -70,13 +72,12 @@ module Transitioner
       possible_transitions.include? desired_state
     end
 
-    def handle_transition_options(transition_options)
-      @options = transition_options.with_indifferent_access
-
-      object.skip_state_validations = options[:skip_validations]
+    def state_instance(desired_state)
+      klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
+      klass&.new(object, desired_state)
     end
 
-    def should_transition_to?(desired_state)
+    def valid_transition?(desired_state)
       return true if options[:skip_validations]
 
       object.valid? &&
@@ -84,9 +85,11 @@ module Transitioner
         state_instance(desired_state)&.valid?
     end
 
-    def state_instance(desired_state)
-      klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
-      klass&.new(object, desired_state)
+    def with_transition_options(options, &block)
+      @options = options
+      object.skip_state_validations = options[:skip_validations]
+      yield
+      object.skip_state_validations = false
     end
 
     class << self

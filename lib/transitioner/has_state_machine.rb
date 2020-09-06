@@ -14,7 +14,7 @@ module Transitioner
       #
       # @param states [Array<Symbol>] the list of possible states in a state machine
       #   @note the first state is used as the initial state
-      # @param opts [Hash] a hash of additional options for the state machine
+      # @param options [Hash] a hash of additional options for the state machine
       #
       # @example
       #   class Post < ApplicationRecord
