@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Transitioner
+module HasStateMachine
   class Railtie < ::Rails::Railtie
   end
 end

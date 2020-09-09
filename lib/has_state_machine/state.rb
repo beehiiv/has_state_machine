@@ -2,7 +2,7 @@
 
 require "active_support/core_ext/string"
 
-module Transitioner
+module HasStateMachine
   class State < String
     extend ActiveModel::Model
     extend ActiveModel::Callbacks
@@ -12,7 +12,7 @@ module Transitioner
 
     ##
     # Defines the before_transition and after_transition callbacks
-    # for use on a Transitioner::State instance.
+    # for use on a HasStateMachine::State instance.
     define_model_callbacks :transition, only: %i[before after]
 
     ##
@@ -20,15 +20,15 @@ module Transitioner
     delegate :possible_transitions, to: "self.class"
 
     ##
-    # Add errors to the ActiveRecord object rather than the Transitioner::State
+    # Add errors to the ActiveRecord object rather than the HasStateMachine::State
     # class.
     delegate :errors, to: :object
 
     ##
-    # Initializes the Transitioner::State instance.
+    # Initializes the HasStateMachine::State instance.
     #
     # @example
-    #   state = Transitioner::State.new(post) #=> "draft"
+    #   state = HasStateMachine::State.new(post) #=> "draft"
     #   state.class #=> Workflow::Post::Draft
     def initialize(object, state)
       @object = object
@@ -98,7 +98,7 @@ module Transitioner
       end
 
       ##
-      # Setter for the Transitioner::State classes to define the possible
+      # Setter for the HasStateMachine::State classes to define the possible
       # states the current state can transition to.
       def transitions_to(states)
         @possible_transitions = states.map(&:to_s)

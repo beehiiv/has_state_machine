@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require "transitioner/state"
-require "transitioner/state_helpers"
+require "has_state_machine/state"
+require "has_state_machine/state_helpers"
 
-module Transitioner
-  module HasStateMachine
+module HasStateMachine
+  module Workflow
     extend ActiveSupport::Concern
 
     class_methods do
@@ -28,7 +28,7 @@ module Transitioner
           options: options.with_indifferent_access
         )
 
-        include Transitioner::StateHelpers
+        include HasStateMachine::StateHelpers
       end
 
       private
