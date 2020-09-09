@@ -8,7 +8,7 @@ module Transitioner
     extend ActiveModel::Callbacks
     include ActiveModel::Validations
 
-    attr_reader :object, :state
+    attr_reader :object, :state, :options
 
     ##
     # Defines the before_transition and after_transition callbacks
@@ -42,12 +42,16 @@ module Transitioner
     # transition.
     #
     # @param desired_state [String] the state to transition to
+    # @param options [Hash] a hash of additional options for
+    #   transitioning the object
     #
     # @return [Boolean] whether or not the transition took place
-    def transition_to(desired_state)
-      return false unless should_transition_to?(desired_state.to_s)
+    def transition_to(desired_state, **options)
+      with_transition_options(options) do
+        return false unless valid_transition?(desired_state.to_s)
 
-      state_instance(desired_state.to_s).perform_transition!
+        state_instance(desired_state.to_s).perform_transition!
+      end
     end
 
     ##
@@ -68,19 +72,30 @@ module Transitioner
       possible_transitions.include? desired_state
     end
 
-    def should_transition_to?(desired_state)
+    def state_instance(desired_state)
+      klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
+      klass&.new(object, desired_state)
+    end
+
+    def valid_transition?(desired_state)
+      return true if options[:skip_validations]
+
       object.valid? &&
         can_transition?(desired_state) &&
         state_instance(desired_state)&.valid?
     end
 
-    def state_instance(desired_state)
-      klass = "#{object.workflow_class}::#{desired_state.to_s.classify}".safe_constantize
-      klass&.new(object, desired_state)
+    def with_transition_options(options, &block)
+      @options = options
+      object.skip_state_validations = options[:skip_validations]
+      yield
+      object.skip_state_validations = false
     end
 
     class << self
-      attr_accessor :possible_transitions
+      def possible_transitions
+        @possible_transitions || []
+      end
 
       ##
       # Setter for the Transitioner::State classes to define the possible

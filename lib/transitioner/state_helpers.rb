@@ -5,7 +5,14 @@ module Transitioner
     extend ActiveSupport::Concern
 
     included do
-      delegate :state_attribute, :workflow_class, :workflow_states, to: "self.class"
+      attr_accessor :skip_state_validations
+
+      delegate \
+        :state_attribute,
+        :state_validations_on_object?,
+        :workflow_namespace,
+        :workflow_states,
+        to: "self.class"
 
       ##
       # Sets the default value of the state method to the initial state
@@ -17,7 +24,7 @@ module Transitioner
       # classes within the state machine and have a valid Transitioner::State class.
       validates state_attribute, inclusion: {in: workflow_states}, presence: true
       validate :state_class_defined?
-      validate :state_instance_validations
+      validate :state_instance_validations, if: :should_validate_state?
 
       ##
       # Overwrites the default getter for the state attribute to
@@ -68,12 +75,21 @@ module Transitioner
       end
 
       ##
+      # Predicate method for determining whether or not the state validations
+      # should be run as part of the object validations.
+      def should_validate_state?
+        return false unless state_validations_on_object?
+
+        !skip_state_validations
+      end
+
+      ##
       # Gets the Transitioner::State class that represents the current state
       # of the model.
       def state_class
         return unless current_state.present?
 
-        "#{workflow_class}::#{current_state.titleize}".safe_constantize
+        "#{workflow_namespace}::#{current_state.titleize}".safe_constantize
       end
 
       ##
