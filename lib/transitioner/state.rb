@@ -98,7 +98,7 @@ module Transitioner
       end
 
       def state
-        self.to_s.demodulize.underscore
+        to_s.demodulize.underscore
       end
 
       ##
