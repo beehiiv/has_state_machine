@@ -4,7 +4,7 @@ require "has_state_machine/state"
 require "has_state_machine/state_helpers"
 
 module HasStateMachine
-  module Workflow
+  module Definition
     extend ActiveSupport::Concern
 
     class_methods do
