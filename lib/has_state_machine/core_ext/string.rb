@@ -4,7 +4,7 @@ class String
   ##
   # Adding our transition method to the default String class to prevent
   # exceptions while transitioning from an invalid state. This method
-  # gets overwritten by valid Transitioner::State classes.
+  # gets overwritten by valid HasStateMachine::State classes.
   #
   # @return [Boolean] false
   #

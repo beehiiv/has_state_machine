@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Workflow
-  class Base < Transitioner::State
+  class Base < HasStateMachine::State
     before_transition do
       Rails.logger.info "\nTransitioning..."
     end

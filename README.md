@@ -1,6 +1,6 @@
-# Transitioner
+# HasStateMachine
 
-[![Build Status](https://github.com/bharget/transitioner/workflows/Tests/badge.svg)](https://github.com/bharget/transitioner/actions)
+[![Build Status](https://github.com/bharget/has_state_machine/workflows/Tests/badge.svg)](https://github.com/bharget/has_state_machine/actions)
 [![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
 
 ## Usage
@@ -10,7 +10,7 @@ How to use my plugin.
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'transitioner'
+gem 'has_state_machine'
 ```
 
 And then execute:
@@ -20,7 +20,7 @@ $ bundle
 
 Or install it yourself as:
 ```bash
-$ gem install transitioner
+$ gem install has_state_machine
 ```
 
 ## Contributing

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Transitioner
+module HasStateMachine
   module StateHelpers
     extend ActiveSupport::Concern
 
@@ -21,17 +21,17 @@ module Transitioner
 
       ##
       # Validating any changes to the status attribute are represented by
-      # classes within the state machine and have a valid Transitioner::State class.
+      # classes within the state machine and have a valid HasStateMachine::State class.
       validates state_attribute, inclusion: {in: workflow_states}, presence: true
       validate :state_class_defined?
       validate :state_instance_validations, if: :should_validate_state?
 
       ##
       # Overwrites the default getter for the state attribute to
-      # instantiate a Transitioner::State instance instead. If the state
+      # instantiate a HasStateMachine::State instance instead. If the state
       # class does not exist, it simply returns a string.
       #
-      # @return [Transitioner::State] the current state represented by a instance
+      # @return [HasStateMachine::State] the current state represented by a instance
       #
       # @example
       #   post = Post.new(status: "draft")
@@ -84,7 +84,7 @@ module Transitioner
       end
 
       ##
-      # Gets the Transitioner::State class that represents the current state
+      # Gets the HasStateMachine::State class that represents the current state
       # of the model.
       def state_class
         return unless current_state.present?
@@ -93,7 +93,7 @@ module Transitioner
       end
 
       ##
-      # True unless unable to find the Transitioner::State class for the current
+      # True unless unable to find the HasStateMachine::State class for the current
       # state.
       def state_class_defined?
         return if state_class.present?
@@ -102,7 +102,7 @@ module Transitioner
       end
 
       ##
-      # Runs the validations defined on the current Transitioner::State when calling
+      # Runs the validations defined on the current HasStateMachine::State when calling
       # model.valid?
       def state_instance_validations
         return unless state_class.present?

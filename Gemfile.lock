@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    transitioner (0.1.0)
+    has_state_machine (0.1.0)
       rails (>= 5.2)
 
 GEM
@@ -172,11 +172,11 @@ PLATFORMS
 
 DEPENDENCIES
   appraisal
+  has_state_machine!
   pry
   pry-rails
   sqlite3
   standard
-  transitioner!
 
 BUNDLED WITH
    2.1.4

@@ -5,7 +5,7 @@ require_relative "boot"
 require "rails/all"
 
 Bundler.require(*Rails.groups)
-require "transitioner"
+require "has_state_machine"
 
 module Dummy
   class Application < Rails::Application

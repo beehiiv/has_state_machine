@@ -1,6 +1,6 @@
 GIT
   remote: https://github.com/rails/rails.git
-  revision: 3d27653dfd275e56b5d0bfce7906ebb47012c68e
+  revision: 1b58c536ab22dd0b4c4957316bcd31262b824deb
   ref: master
   specs:
     actioncable (6.1.0.alpha)
@@ -86,7 +86,7 @@ GIT
 PATH
   remote: ..
   specs:
-    transitioner (0.1.0)
+    has_state_machine (0.1.0)
       rails (>= 5.2)
 
 GEM
@@ -118,7 +118,7 @@ GEM
     mini_mime (1.0.2)
     mini_portile2 (2.4.0)
     minitest (5.14.2)
-    nio4r (2.5.2)
+    nio4r (2.5.3)
     nokogiri (1.10.10)
       mini_portile2 (~> 2.4.0)
     parallel (1.19.2)
@@ -141,7 +141,7 @@ GEM
     rake (13.0.1)
     regexp_parser (1.7.1)
     rexml (3.2.4)
-    rubocop (0.89.1)
+    rubocop (0.90.0)
       parallel (~> 1.10)
       parser (>= 2.7.1.1)
       rainbow (>= 2.2.2, < 4.0)
@@ -152,8 +152,8 @@ GEM
       unicode-display_width (>= 1.4.0, < 2.0)
     rubocop-ast (0.3.0)
       parser (>= 2.7.1.4)
-    rubocop-performance (1.7.1)
-      rubocop (>= 0.82.0)
+    rubocop-performance (1.8.0)
+      rubocop (>= 0.87.0)
     ruby-progressbar (1.10.1)
     sprockets (4.0.2)
       concurrent-ruby (~> 1.0)
@@ -163,9 +163,9 @@ GEM
       activesupport (>= 4.0)
       sprockets (>= 3.0.0)
     sqlite3 (1.4.2)
-    standard (0.5.2)
-      rubocop (~> 0.89.1)
-      rubocop-performance (~> 1.7.1)
+    standard (0.6.0)
+      rubocop (~> 0.90)
+      rubocop-performance (~> 1.8.0)
     thor (1.0.1)
     tzinfo (2.0.2)
       concurrent-ruby (~> 1.0)
@@ -180,12 +180,12 @@ PLATFORMS
 
 DEPENDENCIES
   appraisal
+  has_state_machine!
   pry
   pry-rails
   rails!
   sqlite3
   standard
-  transitioner!
 
 BUNDLED WITH
    2.1.4

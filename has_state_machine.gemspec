@@ -1,17 +1,17 @@
 $:.push File.expand_path("lib", __dir__)
 
 # Maintain your gem's version:
-require "transitioner/version"
+require "has_state_machine/version"
 
 # Describe your gem and declare its dependencies:
 Gem::Specification.new do |spec|
-  spec.name = "transitioner"
-  spec.version = Transitioner::VERSION
+  spec.name = "has_state_machine"
+  spec.version = HasStateMachine::VERSION
   spec.authors = ["Benjamin Hargett"]
   spec.email = ["hargettbenjamin@gmail.com"]
-  spec.homepage = "https://www.github.com/bharget/transitioner"
+  spec.homepage = "https://www.github.com/bharget/has_state_machine"
   spec.summary = "Class based state machine for ActiveRecord models."
-  spec.description = "Transitioner uses ruby classes to make creating a finite state machine in your ActiveRecord models a breeze."
+  spec.description = "HasStateMachine uses ruby classes to make creating a finite state machine in your ActiveRecord models a breeze."
   spec.license = "MIT"
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
