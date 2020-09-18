@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "transitioner/version"
+require "has_state_machine/version"
 require "active_support/core_ext/module/delegation"
 require "date"
 
@@ -183,7 +183,7 @@ module AutoChangelog
 end
 
 AutoChangelog.configure do |config|
-  config.app_version = Transitioner::VERSION
+  config.app_version = HasStateMachine::VERSION
 
   config.entry_sections = [
     { title: "Bug Fixes", marker: ";B" },
