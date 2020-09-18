@@ -17,7 +17,7 @@ module Transitioner
 
     ##
     # Retrieves the next available transitions for a given state.
-    delegate :possible_transitions, to: "self.class"
+    delegate :possible_transitions, :state, to: "self.class"
 
     ##
     # Add errors to the ActiveRecord object rather than the Transitioner::State
@@ -30,10 +30,10 @@ module Transitioner
     # @example
     #   state = Transitioner::State.new(post) #=> "draft"
     #   state.class #=> Workflow::Post::Draft
-    def initialize(object, state)
+    def initialize(object)
       @object = object
-      @state = state
-      super @state
+
+      super state
     end
 
     ##
@@ -74,7 +74,7 @@ module Transitioner
 
     def state_instance(desired_state)
       klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
-      klass&.new(object, desired_state)
+      klass&.new(object)
     end
 
     def valid_transition?(desired_state)
@@ -95,6 +95,10 @@ module Transitioner
     class << self
       def possible_transitions
         @possible_transitions || []
+      end
+
+      def state
+        to_s.demodulize.underscore
       end
 
       ##
