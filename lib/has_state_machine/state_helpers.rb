@@ -37,7 +37,7 @@ module HasStateMachine
       #   post = Post.new(status: "draft")
       #   post.status.class #=> Workflow::Post::Draft
       define_method state_attribute.to_s do
-        return state_class.new(self, current_state) if state_class.present?
+        return state_class.new(self) if state_class.present?
 
         current_state
       end
@@ -89,7 +89,7 @@ module HasStateMachine
       def state_class
         return unless current_state.present?
 
-        "#{workflow_namespace}::#{current_state.titleize}".safe_constantize
+        "#{workflow_namespace}::#{current_state.classify}".safe_constantize
       end
 
       ##
