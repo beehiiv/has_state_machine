@@ -10,7 +10,7 @@ class Foobar < ActiveRecord::Base
   has_state_machine states: %i[foo bar]
 end
 
-class WorkflowTest < ActiveSupport::TestCase
+class HasStateMachine::DefinitionTest < ActiveSupport::TestCase
   subject { Foobar.new }
 
   describe "#has_state_machine" do
