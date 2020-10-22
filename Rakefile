@@ -23,3 +23,9 @@ end
 task :lint do
   sh "bin/standardrb --no-fix"
 end
+
+namespace :changelog do
+  task :refresh do
+    sh "bin/refresh_changelog"
+  end
+end
