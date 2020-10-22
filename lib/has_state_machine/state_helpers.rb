@@ -5,6 +5,10 @@ module HasStateMachine
     extend ActiveSupport::Concern
 
     included do
+      ##
+      # Sometimes you may want to skip the validations defined on
+      # the state when validating your object; set this accessor
+      # to true to do so.
       attr_accessor :skip_state_validations
 
       delegate \
@@ -20,8 +24,9 @@ module HasStateMachine
       attribute state_attribute, :string, default: initial_state
 
       ##
-      # Validating any changes to the status attribute are represented by
-      # classes within the state machine and have a valid HasStateMachine::State class.
+      # Validate that the current state is a possible state, that there is a
+      # state class defined for it, and run the validations from the state
+      # class instance if need be.
       validates state_attribute, inclusion: {in: workflow_states}, presence: true
       validate :state_class_defined?
       validate :state_instance_validations, if: :should_validate_state?
@@ -44,7 +49,7 @@ module HasStateMachine
 
       workflow_states.each do |state|
         ##
-        # Defines scopes based on the state machine possible states
+        # Defines scopes based on the state machine's possible states
         #
         # @return [ActiveRecord_Relation]
         # @example Retreiving a users published posts
@@ -102,8 +107,8 @@ module HasStateMachine
       end
 
       ##
-      # Runs the validations defined on the current HasStateMachine::State when calling
-      # model.valid?
+      # Run the validations defined on the current HasStateMachine::State. Errors found there
+      # should be added to this object.
       def state_instance_validations
         return unless state_class.present?
 
