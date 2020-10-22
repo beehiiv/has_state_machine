@@ -36,7 +36,6 @@ module HasStateMachine
       def define_helper_methods(states:, options:)
         ##
         # The list of possible states in the state machine.
-        # Can be overwritten to use a different column name.
         define_singleton_method "workflow_states" do
           states
         end
