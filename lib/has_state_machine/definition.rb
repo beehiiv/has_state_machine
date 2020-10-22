@@ -56,7 +56,7 @@ module HasStateMachine
 
         ##
         # Determines whether or not the state validations should be run
-        # as part of the object validations.
+        # as part of the object validations; they are by default.
         define_singleton_method "state_validations_on_object?" do
           return true unless options.key?(:state_validations_on_object)
 

@@ -8,7 +8,7 @@ module HasStateMachine
     extend ActiveModel::Callbacks
     include ActiveModel::Validations
 
-    attr_reader :object, :state, :options
+    attr_reader :object, :state
 
     ##
     # Defines the before_transition and after_transition callbacks
@@ -28,8 +28,7 @@ module HasStateMachine
     # Initializes the HasStateMachine::State instance.
     #
     # @example
-    #   state = HasStateMachine::State.new(post) #=> "draft"
-    #   state.class #=> Workflow::Post::Draft
+    #   state = Workflow::Post::Draft.new(post) #=> "draft"
     def initialize(object)
       @object = object
 
@@ -78,7 +77,7 @@ module HasStateMachine
     end
 
     def valid_transition?(desired_state)
-      return true if options[:skip_validations]
+      return true if object.skip_state_validations
 
       object.valid? &&
         can_transition?(desired_state) &&
@@ -86,7 +85,6 @@ module HasStateMachine
     end
 
     def with_transition_options(options, &block)
-      @options = options
       object.skip_state_validations = options[:skip_validations]
       yield
       object.skip_state_validations = false
