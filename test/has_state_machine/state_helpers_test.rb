@@ -14,11 +14,7 @@ module Workflow
   module Mountain
     class Foo < HasStateMachine::State
     end
-  end
-end
 
-module Workflow
-  module Mountain
     class Baz < HasStateMachine::State
       validate :failing_validation
 
