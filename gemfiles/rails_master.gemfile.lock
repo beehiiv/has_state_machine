@@ -86,7 +86,7 @@ GIT
 PATH
   remote: ..
   specs:
-    has_state_machine (0.1.0)
+    has_state_machine (0.1.1)
       rails (>= 5.2)
 
 GEM
