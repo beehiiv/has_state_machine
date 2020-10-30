@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.1.1] - Oct 29, 2020
+40c0ae3
+### Bug Fixes
+- Fix HasStateMachine#transition_to always returning false (#12)
+----
 ## [0.1.0] - Oct 21, 2020
 9d903cb
 ### Features
