@@ -2,16 +2,16 @@
 
 require "test_helper"
 
-ActiveRecord::Migration.create_table :foobars, force: true do |t|
+ActiveRecord::Migration.create_table :hikers, force: true do |t|
   t.string :status
 end
 
-class Foobar < ActiveRecord::Base
+class Hiker < ActiveRecord::Base
   has_state_machine states: %i[foo bar]
 end
 
 class HasStateMachine::DefinitionTest < ActiveSupport::TestCase
-  subject { Foobar.new }
+  subject { Hiker.new }
 
   describe "#has_state_machine" do
     it "includes the correct module" do
@@ -39,7 +39,7 @@ class HasStateMachine::DefinitionTest < ActiveSupport::TestCase
         it { subject.respond_to? :workflow_namespace }
 
         it "returns the correct value" do
-          assert_equal "Workflow::Foobar", subject.workflow_namespace
+          assert_equal "Workflow::Hiker", subject.workflow_namespace
         end
       end
 

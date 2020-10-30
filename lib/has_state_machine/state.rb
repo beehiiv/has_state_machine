@@ -46,11 +46,15 @@ module HasStateMachine
     #
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state, **options)
+      transitioned = false
+
       with_transition_options(options) do
         return false unless valid_transition?(desired_state.to_s)
 
-        state_instance(desired_state.to_s).perform_transition!
+        transitioned = state_instance(desired_state.to_s).perform_transition!
       end
+
+      transitioned
     end
 
     ##
