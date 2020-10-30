@@ -111,9 +111,6 @@ File.write("#{APP_ROOT}/lib/has_state_machine/version.rb", version_file_contents
 puts "--- Update CHANGELOG ---"
 `bundle exec rake changelog:refresh`
 
-puts "--- Running Appraisal ---"
-`bin/appraisal`
-
 puts "--- Adding Files ---"
 `git add .`
 
