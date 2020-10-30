@@ -15,21 +15,13 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
 
-      - name: Cache Gems
-        uses: actions/cache@v2
-        with:
-          path: vendor/bundle
-          key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-gems-
-
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install libsqlite3-dev
           gem update --system
           gem install bundler
-          bundle install --path vendor/bundle --jobs 4 --retry 3
+          bundle install --jobs 4 --retry 3
 
       - name: Lint
         run: bundle exec rake lint
