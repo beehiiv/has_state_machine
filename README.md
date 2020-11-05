@@ -75,6 +75,10 @@ module Workflow
 
     after_transition do
       Rails.logger.info "Post has been archived\n"
+
+      # You can access the previous state of the object in
+      # after_transition callbacks as well.
+      Rails.logger.info "Transitioned from #{previous_state}\n"
     end
   end
 end

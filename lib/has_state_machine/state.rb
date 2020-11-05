@@ -75,6 +75,14 @@ module HasStateMachine
       possible_transitions.include? desired_state
     end
 
+    ##
+    # Helper method for grabbing the previous state of the object after
+    # it has been transitioned to the new state. Useful in
+    # after_transition blocks
+    def previous_state
+      object.previous_changes[object.state_attribute]&.first
+    end
+
     def state_instance(desired_state)
       klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
       klass&.new(object)
