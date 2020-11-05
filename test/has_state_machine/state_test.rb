@@ -9,6 +9,7 @@ end
 class Swimmer < ActiveRecord::Base
   attr_accessor :before_transition_boolean
   attr_accessor :after_transition_boolean
+  attr_accessor :previous_state
 
   has_state_machine states: %i[diving swimming floating]
 end
@@ -26,6 +27,7 @@ module Workflow
 
       after_transition do
         object.after_transition_boolean = true
+        object.previous_state = previous_state
       end
     end
 
@@ -40,7 +42,7 @@ module Workflow
 end
 
 class HasStateMachine::StateTest < ActiveSupport::TestCase
-  let(:object) { Swimmer.new }
+  let(:object) { Swimmer.create }
   subject { Workflow::Swimmer::Diving.new(object) }
 
   describe "#possible_transitions" do
@@ -56,14 +58,24 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
   end
 
   describe "#transition_to" do
-    it "runs callbacks" do
-      refute object.before_transition_boolean
-      refute object.after_transition_boolean
+    describe "callbacks" do
+      it "runs before_transition callbacks" do
+        refute object.before_transition_boolean
+        subject.transition_to(:swimming)
+        assert object.before_transition_boolean
+      end
 
-      subject.transition_to(:swimming)
+      it "runs after_transition callbacks" do
+        refute object.after_transition_boolean
+        subject.transition_to(:swimming)
+        assert object.after_transition_boolean
+      end
 
-      assert object.before_transition_boolean
-      assert object.after_transition_boolean
+      it "has access to the previous state" do
+        assert object.previous_state.nil?
+        subject.transition_to(:swimming)
+        assert_equal "diving", object.previous_state
+      end
     end
 
     it "updates the object's state attribute" do
