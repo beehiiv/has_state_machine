@@ -5,6 +5,14 @@
 
 HasStateMachine uses ruby classes to make creating a finite state machine for your ActiveRecord models a breeze.
 
+## Contents
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Changelog](https://github.com/encampment/has_state_machine/blob/master/CHANGELOG.md)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Installation
 Add this line to your application's Gemfile:
 
@@ -70,15 +78,15 @@ module Workflow
     # There are callbacks for running logic before and after
     # a transition occurs.
     before_transition do
-      Rails.logger.info "Post is being archived\n"
+      Rails.logger.info "== Post is being archived ==\n"
     end
 
     after_transition do
-      Rails.logger.info "Post has been archived\n"
+      Rails.logger.info "== Post has been archived ==\n"
 
       # You can access the previous state of the object in
       # after_transition callbacks as well.
-      Rails.logger.info "Transitioned from #{previous_state}\n"
+      Rails.logger.info "== Transitioned from #{previous_state} ==\n"
     end
   end
 end
@@ -95,10 +103,31 @@ post.status                           # => "draft"
 post.title = "Foobar"
 post.status.transition_to(:published) # => true
 post.status                           # => "published"
+
+post.status.transition_to(:archived)
+# == Post is being archived ==
+# == Post has been archived ==
+# == Transitioned from published ==
+# => true
 ```
 
 ## Contributing
-Coming Soon
+
+Anyone is encouraged to help improve this project. Here are a few ways you can help:
+
+- [Report bugs](https://github.com/encampment/has_state_machine/issues)
+- Fix bugs and [submit pull requests](https://github.com/encampment/has_state_machine/pulls)
+- Write, clarify, or fix documentation
+- Suggest or add new features
+
+To get started with development:
+
+```
+git clone https://github.com/encampment/has_state_machine.git
+cd has_state_machine
+bundle install
+bundle exec rake test
+```
 
 ## License
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
