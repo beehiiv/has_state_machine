@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.2.0] - Nov  4, 2020
+972527f
+### Features
+- Add ability to access previous state in after_transition blocks (#5)
+----
 ## [0.1.1] - Oct 29, 2020
 40c0ae3
 ### Bug Fixes
