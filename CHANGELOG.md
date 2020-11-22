@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.3.0] - Nov 22, 2020
+70c3f2c
+### Changes
+- Update scope generation to check if ActiveRecord is defined (#14)
+----
 ## [0.2.0] - Nov  4, 2020
 972527f
 ### Features
