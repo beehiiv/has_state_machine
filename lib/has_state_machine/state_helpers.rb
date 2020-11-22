@@ -55,7 +55,9 @@ module HasStateMachine
         # @example Retreiving a users published posts
         #   > Post.published.where(user: user)
         #   #=> [#<Post>]
-        scope state, -> { where("#{state_attribute} = ?", state) }
+        if defined?(ActiveRecord) && (self < ActiveRecord::Base)
+          scope state, -> { where("#{state_attribute} = ?", state) }
+        end
 
         ##
         # Defines boolean helpers to determine if the active state matches
@@ -76,7 +78,7 @@ module HasStateMachine
       # Getter for the current state of the model based on the configured state
       # attribute.
       def current_state
-        self[state_attribute]
+        attributes.with_indifferent_access[state_attribute]
       end
 
       ##
