@@ -109,7 +109,7 @@ FILE
 File.write("#{APP_ROOT}/lib/has_state_machine/version.rb", version_file_contents)
 
 puts "--- Update CHANGELOG ---"
-`bin/refresh_changelong`
+`bundle exec rake changelog:refresh`
 
 puts "--- Adding Files ---"
 `git add .`
