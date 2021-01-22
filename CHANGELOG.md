@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.3.1] - Jan 22, 2021
+97e65ea
+### Security
+- Bump nokogiri from 1.10.10 to 1.11.0 (#15)
+----
 ## [0.3.0] - Nov 22, 2020
 70c3f2c
 ### Changes
