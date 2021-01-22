@@ -7,6 +7,12 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.3.3] - Jan 22, 2021
+5d7a9ba
+### Changes
+- Bump Nokogiri (#18)
+- * Bump Nokogiri to 1.11.1
+----
 ## [0.3.2] - Jan 22, 2021
 a8f7199
 ### Changes
