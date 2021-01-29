@@ -16,8 +16,9 @@ module HasStateMachine
     define_model_callbacks :transition, only: %i[before after]
 
     ##
-    # Retrieves the next available transitions for a given state.
-    delegate :possible_transitions, :state, to: "self.class"
+    # possible_transitions - Retrieves the next available transitions for a given state.
+    # transactional? - Determines whether or not the transition should happen with a transactional block.
+    delegate :possible_transitions, :transactional?, :state, to: "self.class"
 
     ##
     # Add errors to the ActiveRecord object rather than the HasStateMachine::State
@@ -51,7 +52,13 @@ module HasStateMachine
       with_transition_options(options) do
         return false unless valid_transition?(desired_state.to_s)
 
-        transitioned = state_instance(desired_state.to_s).perform_transition!
+        transitioned = state_instance(desired_state.to_s).then { |desired_state|
+          if desired_state.transactional?
+            desired_state.perform_transactional_transition!
+          else
+            desired_state.perform_transition!
+          end
+        }
       end
 
       transitioned
@@ -66,7 +73,23 @@ module HasStateMachine
       end
     end
 
+    ##
+    # Makes the actual transition from one state to the next and
+    # runs the before and after transition callbacks in a transaction
+    # to allow for rollbacks.
+    def perform_transactional_transition!
+      ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+        run_callbacks :transition do
+          rollback_transition unless object.update("#{object.state_attribute}": state)
+        end
+      end
+    end
+
     private
+
+    def rollback_transition
+      raise ActiveRecord::Rollback
+    end
 
     ##
     # Determines if the given desired state exists in the predetermined
@@ -111,11 +134,24 @@ module HasStateMachine
         to_s.demodulize.underscore
       end
 
+      def transactional?
+        @transactional || false
+      end
+
       ##
       # Setter for the HasStateMachine::State classes to define the possible
       # states the current state can transition to.
       def transitions_to(states)
-        @possible_transitions = states.map(&:to_s)
+        state_options(transitions_to: states)
+      end
+
+      ##
+      # Set the options for the HasStateMachine::State classes to define the possible
+      # states the current state can transition to and whether or not transitioning
+      # to the state should be performed within a transaction.
+      def state_options(transitions_to: [], transactional: false)
+        @possible_transitions = transitions_to.map(&:to_s)
+        @transactional = transactional
       end
     end
   end
