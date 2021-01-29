@@ -11,13 +11,13 @@ class Swimmer < ActiveRecord::Base
   attr_accessor :after_transition_boolean
   attr_accessor :previous_state
 
-  has_state_machine states: %i[diving swimming floating]
+  has_state_machine states: %i[diving swimming floating tanning tubing]
 end
 
 module Workflow
   module Swimmer
     class Diving < HasStateMachine::State
-      transitions_to %i[swimming floating]
+      state_options transitions_to: %i[swimming floating tanning tubing]
     end
 
     class Swimming < HasStateMachine::State
@@ -38,6 +38,22 @@ module Workflow
         errors.add(:base, "swimmer cannot float")
       end
     end
+
+    class Tubing < HasStateMachine::State
+      state_options transactional: true
+
+      before_transition do
+        rollback_transition
+      end
+    end
+
+    class Tanning < HasStateMachine::State
+      state_options transactional: true
+
+      after_transition do
+        rollback_transition
+      end
+    end
   end
 end
 
@@ -46,7 +62,7 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
   subject { Workflow::Swimmer::Diving.new(object) }
 
   describe "#possible_transitions" do
-    it { assert_equal %w[swimming floating], subject.possible_transitions }
+    it { assert_equal %w[swimming floating tanning tubing], subject.possible_transitions }
   end
 
   describe "#errors" do
@@ -99,6 +115,18 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
     it "can skip state validations" do
       assert subject.transition_to(:floating, skip_validations: true)
       assert_equal "floating", object.status
+    end
+
+    describe "transactional" do
+      it "does not perform transition if after_transition rollsback" do
+        refute subject.transition_to(:tanning)
+        assert_equal "diving", object.reload.status
+      end
+
+      it "does not perform transition if before_transition rollsback" do
+        refute subject.transition_to(:tubing)
+        assert_equal "diving", object.reload.status
+      end
     end
   end
 end

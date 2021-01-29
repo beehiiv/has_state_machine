@@ -7,13 +7,16 @@ HasStateMachine uses ruby classes to make creating a finite state machine for yo
 
 ## Contents
 
-- [Installation](#installation)
-- [Usage](#usage)
-- [Changelog](https://github.com/encampment/has_state_machine/blob/master/CHANGELOG.md)
-- [Contributing](#contributing)
-- [License](#license)
+- [HasStateMachine](#hasstatemachine)
+  - [Contents](#contents)
+  - [Installation](#installation)
+  - [Usage](#usage)
+    - [Advanced Usage](#advanced-usage)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Installation
+
 Add this line to your application's Gemfile:
 
 ```ruby
@@ -21,11 +24,13 @@ gem 'has_state_machine'
 ```
 
 And then execute:
+
 ```bash
 $ bundle
 ```
 
 Or install it yourself as:
+
 ```bash
 $ gem install has_state_machine
 ```
@@ -36,6 +41,7 @@ You must first use the `has_state_machine` macro to define your state machine at
 a high level. This includes defining the possible states for your object as well
 as some optional configuration should you want to change the default behavior of
 the state machine.
+
 ```ruby
 # By default, it is assumed that the "state" of the object is
 # stored in a string column named "status".
@@ -53,13 +59,13 @@ from `HasStateMachine::State`.
 module Workflow
   class Post::Draft < HasStateMachine::State
     # Define the possible transitions from the "draft" state
-    transitions_to %i[published archived]
+    state_options transitions_to: %i[published archived]
   end
 end
 
 module Workflow
   class Post::Published < HasStateMachine::State
-    transitions_to %i[archived]
+    state_options transitions_to: %i[archived]
 
     # Custom validations can be added to the state to ensure a transition is "valid"
     validate :title_exists?
@@ -111,6 +117,28 @@ post.status.transition_to(:archived)
 # => true
 ```
 
+### Advanced Usage
+
+Sometimes there may be a situation where you want to manually roll back a state change in one of the provided callbacks. To do this, add the `transactional: true` option to the `state_options` declaration and use the `rollback_transition` method in your callback. This will allow you to prevent the transition from persisting if something further down the line fails.
+
+```ruby
+module Workflow
+  class Post::Archived < HasStateMachine::State
+    state_options transactional: true
+
+    after_transition do
+      rollback_transition unless notified_watchers?
+    end
+
+    private
+
+    def notified_watchers?
+      #...
+    end
+  end
+end
+```
+
 ## Contributing
 
 Anyone is encouraged to help improve this project. Here are a few ways you can help:
@@ -130,4 +158,5 @@ bundle exec rake test
 ```
 
 ## License
+
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).

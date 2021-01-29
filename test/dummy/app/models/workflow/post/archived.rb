@@ -2,6 +2,6 @@
 
 module Workflow
   class Post::Archived < Workflow::Base
-    transitions_to %i[published]
+    state_options transitions_to: %i[published]
   end
 end
