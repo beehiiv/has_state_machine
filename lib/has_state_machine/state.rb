@@ -52,13 +52,13 @@ module HasStateMachine
       with_transition_options(options) do
         return false unless valid_transition?(desired_state.to_s)
 
-        transitioned = state_instance(desired_state.to_s).then { |desired_state|
-          if desired_state.transactional?
-            desired_state.perform_transactional_transition!
-          else
-            desired_state.perform_transition!
-          end
-        }
+        desired_state = state_instance(desired_state.to_s)
+
+        transitioned = if desired_state.transactional?
+          desired_state.perform_transactional_transition!
+        else
+          desired_state.perform_transition!
+        end
       end
 
       transitioned
