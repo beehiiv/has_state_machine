@@ -119,7 +119,7 @@ post.status.transition_to(:archived)
 
 ### Advanced Usage
 
-Sometimes there may be a situation where you want to manually roll back a state change in one of the provided callbacks. To do this, add the `transactional: true` option to the `state_options` declaration and use the method `rollback_transition` in your callback. This will allow you to prevent the transition from persisting if something further down the line fails.
+Sometimes there may be a situation where you want to manually roll back a state change in one of the provided callbacks. To do this, add the `transactional: true` option to the `state_options` declaration and use the `rollback_transition` method in your callback. This will allow you to prevent the transition from persisting if something further down the line fails.
 
 ```ruby
 module Workflow
