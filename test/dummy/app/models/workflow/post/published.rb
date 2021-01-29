@@ -2,7 +2,7 @@
 
 module Workflow
   class Post::Published < Workflow::Base
-    transitions_to %i[archived]
+    state_options transitions_to: %i[archived]
 
     validate :title_exists?
 

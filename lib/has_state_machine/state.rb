@@ -76,7 +76,7 @@ module HasStateMachine
     ##
     # Makes the actual transition from one state to the next and
     # runs the before and after transition callbacks in a transaction
-    # to allow for rollbacks.
+    # to allow for roll backs.
     def perform_transactional_transition!
       ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
         run_callbacks :transition do
