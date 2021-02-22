@@ -143,6 +143,7 @@ module HasStateMachine
       # states the current state can transition to.
       def transitions_to(states)
         state_options(transitions_to: states)
+        HasStateMachine::Deprecation.deprecation_warning(:transitions_to, "use state_options instead")
       end
 
       ##
