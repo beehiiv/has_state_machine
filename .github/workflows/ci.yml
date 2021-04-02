@@ -23,6 +23,9 @@ jobs:
           gem install bundler
           bundle install --jobs 4 --retry 3
 
+      - name: Install Apparaisal Dependencies
+        run: bundle exec appraisal install
+
       - name: Lint
         run: bundle exec rake lint
 
