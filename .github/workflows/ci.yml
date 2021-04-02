@@ -28,13 +28,16 @@ jobs:
 
       - name: Test against rails main
         if: ${{ matrix.ruby == 2.7 }}
-        run: bundle exec appraisal rails-main bundle install
-        run: bundle exec appraisal rails-main rake test
+        run: |
+          bundle exec appraisal rails-main bundle install
+          bundle exec appraisal rails-main rake test
 
       - name: Test against rails 6.0
-        run: bundle exec appraisal rails-6-0 bundle install
-        run: bundle exec appraisal rails-6-0 rake test
+        run: |
+          bundle exec appraisal rails-6-0 bundle install
+          bundle exec appraisal rails-6-0 rake test
 
       - name: Test against rails 5.2
-        run: bundle exec appraisal rails-5-2 bundle install
-        run: bundle exec appraisal rails-5-2 rake test
+        run: |
+          bundle exec appraisal rails-5-2 bundle install
+          bundle exec appraisal rails-5-2 rake test
