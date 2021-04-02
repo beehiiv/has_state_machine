@@ -23,18 +23,18 @@ jobs:
           gem install bundler
           bundle install --jobs 4 --retry 3
 
-      - name: Install Apparaisal Dependencies
-        run: bundle exec appraisal install
-
       - name: Lint
         run: bundle exec rake lint
 
       - name: Test against rails main
         if: ${{ matrix.ruby == 2.7 }}
+        run: bundle exec appraisal rails-main bundle install
         run: bundle exec appraisal rails-main rake test
 
       - name: Test against rails 6.0
+        run: bundle exec appraisal rails-6-0 bundle install
         run: bundle exec appraisal rails-6-0 rake test
 
       - name: Test against rails 5.2
+        run: bundle exec appraisal rails-5-2 bundle install
         run: bundle exec appraisal rails-5-2 rake test
