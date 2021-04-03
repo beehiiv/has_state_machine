@@ -13,13 +13,11 @@ a8732b5
 - Deprecate HasStateMachine::State#transitions_to (#20)
 ### Features
 - Add Transactional Transitions (#19)
-- * Add Transactional Transitions
 ----
 ## [0.3.3] - Jan 22, 2021
 5d7a9ba
 ### Changes
 - Bump Nokogiri (#18)
-- * Bump Nokogiri to 1.11.1
 ----
 ## [0.3.2] - Jan 22, 2021
 a8f7199
