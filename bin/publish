@@ -96,6 +96,9 @@ end
 
 new_version = current_version.join(".")
 
+puts "--- Bundle Install  ---"
+`bundle install`
+
 puts "--- Updating version to #{new_version} ---"
 
 version_file_contents = <<~FILE
@@ -111,14 +114,21 @@ File.write("#{APP_ROOT}/lib/has_state_machine/version.rb", version_file_contents
 puts "--- Update CHANGELOG ---"
 `bundle exec rake changelog:refresh`
 
-puts "--- Adding Files ---"
-`git add .`
+printf "\nAre you ready to commit and release this gem? [Y/n]: "
+prompt = STDIN.gets.chomp
 
-puts "--- Commiting Changes ---"
-`git commit -m 'Bump version to #{new_version}'`
+if prompt == "Y"
+  puts "--- Adding Files ---"
+  `git add .`
 
-puts "--- Pushing Changes ---"
-`git push origin master`
+  puts "--- Commiting Changes ---"
+  `git commit -m 'Bump version to #{new_version}'`
 
-puts "--- Publishing Gem ---"
-`bundle exec rake release`
+  puts "--- Pushing Changes ---"
+  `git push origin master`
+
+  puts "--- Publishing Gem ---"
+  `bundle exec rake release`
+else
+  puts "--- Aborting Gem Release ---"
+end
