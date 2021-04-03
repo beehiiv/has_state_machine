@@ -7,6 +7,14 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.4.0] - Apr  2, 2021
+a8732b5
+### Deprecations
+- Deprecate HasStateMachine::State#transitions_to (#20)
+### Features
+- Add Transactional Transitions (#19)
+- * Add Transactional Transitions
+----
 ## [0.3.3] - Jan 22, 2021
 5d7a9ba
 ### Changes
