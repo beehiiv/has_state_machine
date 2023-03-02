@@ -104,8 +104,8 @@ class HasStateMachine::StateHelpersTest < ActiveSupport::TestCase
     it "works correctly with joins" do
       foo_mountain = Mountain.create(status: "foo")
       bar_mountain = Mountain.create(status: "bar")
-      tree1 = Tree.create(mountain: foo_mountain, status: "foo")
-      tree2 = Tree.create(mountain: bar_mountain, status: "foo")
+      Tree.create(mountain: foo_mountain, status: "foo")
+      Tree.create(mountain: bar_mountain, status: "foo")
 
       assert_equal [foo_mountain], Mountain.foo.joins(:trees).merge(Tree.foo).to_a
     end
