@@ -6,8 +6,19 @@ ActiveRecord::Migration.create_table :mountains, force: true do |t|
   t.string :status
 end
 
+ActiveRecord::Migration.create_table :trees, force: true do |t|
+  t.bigint :mountain_id
+  t.string :status
+end
+
 class Mountain < ActiveRecord::Base
   has_state_machine states: %i[foo bar baz]
+  has_many :trees
+end
+
+class Tree < ActiveRecord::Base
+  has_state_machine states: %i[foo bar baz]
+  belongs_to :mountain
 end
 
 module Workflow
@@ -21,6 +32,11 @@ module Workflow
       def failing_validation
         errors.add(:base, "dummy validation failed")
       end
+    end
+  end
+
+  module Tree
+    class Foo < HasStateMachine::State
     end
   end
 end
@@ -84,5 +100,14 @@ class HasStateMachine::StateHelpersTest < ActiveSupport::TestCase
     it { assert_kind_of ActiveRecord::Relation, Mountain.foo }
     it { assert_kind_of ActiveRecord::Relation, Mountain.bar }
     it { assert_kind_of ActiveRecord::Relation, Mountain.foo }
+
+    it "works correctly with joins" do
+      foo_mountain = Mountain.create(status: "foo")
+      bar_mountain = Mountain.create(status: "bar")
+      Tree.create(mountain: foo_mountain, status: "foo")
+      Tree.create(mountain: bar_mountain, status: "foo")
+
+      assert_equal [foo_mountain], Mountain.foo.joins(:trees).merge(Tree.foo).to_a
+    end
   end
 end

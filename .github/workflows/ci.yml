@@ -5,13 +5,13 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: [2.5, 2.6, 2.7]
+        ruby: ['2.7', '3.0']
     steps:
       - name: Checkout
         uses: actions/checkout@master
 
       - name: Setup Ruby
-        uses: actions/setup-ruby@v1
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}
 
@@ -22,22 +22,22 @@ jobs:
           gem update --system
           gem install bundler
           bundle install --jobs 4 --retry 3
+          bundle update standard
 
       - name: Lint
         run: bundle exec rake lint
 
       - name: Test against rails main
-        if: ${{ matrix.ruby == 2.7 }}
         run: |
           bundle exec appraisal rails-main bundle install
           bundle exec appraisal rails-main rake test
 
-      - name: Test against rails 6.0
+      - name: Test against rails 7.0
         run: |
-          bundle exec appraisal rails-6-0 bundle install
-          bundle exec appraisal rails-6-0 rake test
+          bundle exec appraisal rails-7-0 bundle install
+          bundle exec appraisal rails-7-0 rake test
 
-      - name: Test against rails 5.2
+      - name: Test against rails 6.1
         run: |
-          bundle exec appraisal rails-5-2 bundle install
-          bundle exec appraisal rails-5-2 rake test
+          bundle exec appraisal rails-6-1 bundle install
+          bundle exec appraisal rails-6-1 rake test

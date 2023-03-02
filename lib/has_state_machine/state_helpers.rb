@@ -56,7 +56,7 @@ module HasStateMachine
         #   > Post.published.where(user: user)
         #   #=> [#<Post>]
         if defined?(ActiveRecord) && (self < ActiveRecord::Base)
-          scope state, -> { where("#{state_attribute} = ?", state) }
+          scope state, -> { where("#{table_name}.#{state_attribute} = ?", state) }
         end
 
         ##

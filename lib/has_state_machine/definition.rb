@@ -36,28 +36,28 @@ module HasStateMachine
       def define_helper_methods(states:, options:)
         ##
         # The list of possible states in the state machine.
-        define_singleton_method "workflow_states" do
+        define_singleton_method :workflow_states do
           states
         end
 
         ##
         # Defines the column name for the attribute holding the current status.
         # Can be overwritten to use a different column name.
-        define_singleton_method "state_attribute" do
+        define_singleton_method :state_attribute do
           options[:state_attribute]&.to_sym || :status
         end
 
         ##
         # Defines the namespace of the models possible states.
         # Can be overwritten to use a different namespace.
-        define_singleton_method "workflow_namespace" do
+        define_singleton_method :workflow_namespace do
           (options[:workflow_namespace] || "Workflow::#{self}")
         end
 
         ##
         # Determines whether or not the state validations should be run
         # as part of the object validations; they are by default.
-        define_singleton_method "state_validations_on_object?" do
+        define_singleton_method :state_validations_on_object? do
           return true unless options.key?(:state_validations_on_object)
 
           options[:state_validations_on_object]
