@@ -27,12 +27,13 @@ jobs:
         run: bundle exec rake lint
 
       - name: Test against rails main
-        if: ${{ matrix.ruby == 2.7 }}
+        if: ${{ matrix.ruby >= 2.7 }}
         run: |
           bundle exec appraisal rails-main bundle install
           bundle exec appraisal rails-main rake test
 
       - name: Test against rails 6.0
+        if: ${{ matrix.ruby >= 2.7 }}
         run: |
           bundle exec appraisal rails-6-0 bundle install
           bundle exec appraisal rails-6-0 rake test
