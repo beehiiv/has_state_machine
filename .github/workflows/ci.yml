@@ -22,7 +22,7 @@ jobs:
           gem update --system
           gem install bundler
           bundle install --jobs 4 --retry 3
-          bundle update
+          bundle update standard
 
       - name: Lint
         run: bundle exec rake lint
