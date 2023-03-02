@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.4.1] - Mar  2, 2023
+9177760
+### Bug Fixes
+- Fix scopes with joins (#47)
+----
 ## [0.4.0] - Apr  2, 2021
 a8732b5
 ### Deprecations
