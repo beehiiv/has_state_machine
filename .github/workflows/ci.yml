@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        ruby: ['2.6', '2.7', '3.0']
+        ruby: ['2.7', '3.0', '3.1']
     steps:
       - name: Checkout
         uses: actions/checkout@master
@@ -27,18 +27,16 @@ jobs:
         run: bundle exec rake lint
 
       - name: Test against rails main
-        if: ${{ matrix.ruby >= 2.7 }}
         run: |
           bundle exec appraisal rails-main bundle install
           bundle exec appraisal rails-main rake test
 
-      - name: Test against rails 6.0
-        if: ${{ matrix.ruby >= 2.7 }}
+      - name: Test against rails 7.0
         run: |
-          bundle exec appraisal rails-6-0 bundle install
-          bundle exec appraisal rails-6-0 rake test
+          bundle exec appraisal rails-7-0 bundle install
+          bundle exec appraisal rails-7-0 rake test
 
-      - name: Test against rails 5.2
+      - name: Test against rails 6.1
         run: |
-          bundle exec appraisal rails-5-2 bundle install
-          bundle exec appraisal rails-5-2 rake test
+          bundle exec appraisal rails-6-1 bundle install
+          bundle exec appraisal rails-6-1 rake test
