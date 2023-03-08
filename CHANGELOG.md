@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [0.5.0] - Mar  8, 2023
+b202e97
+### Changes
+- Return transaction success or failure (#48)
+----
 ## [0.4.1] - Mar  2, 2023
 9177760
 ### Bug Fixes
