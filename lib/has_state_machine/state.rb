@@ -83,6 +83,8 @@ module HasStateMachine
           rollback_transition unless object.update("#{object.state_attribute}": state)
         end
       end
+
+      object.reload.public_send(object.state_attribute) == state
     end
 
     private
