@@ -78,7 +78,7 @@ module HasStateMachine
       # Getter for the current state of the model based on the configured state
       # attribute.
       def current_state
-        attributes.with_indifferent_access[state_attribute]
+        public_send(state_attribute)
       end
 
       ##
