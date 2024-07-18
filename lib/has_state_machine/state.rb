@@ -33,7 +33,7 @@ module HasStateMachine
     def initialize(object)
       @object = object
 
-      super state
+      super(state)
     end
 
     ##

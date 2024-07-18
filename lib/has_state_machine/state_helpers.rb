@@ -67,7 +67,7 @@ module HasStateMachine
         # @example Check if a post is published
         #   > post.published?
         #   #=> true
-        define_method "#{state}?" do
+        define_method :"#{state}?" do
           current_state == state
         end
       end
