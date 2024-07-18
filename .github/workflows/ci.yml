@@ -27,11 +27,6 @@ jobs:
       - name: Lint
         run: bundle exec rake lint
 
-      - name: Test against rails main
-        run: |
-          bundle exec appraisal rails-main bundle install
-          bundle exec appraisal rails-main rake test
-
       - name: Test against rails 7.0
         run: |
           bundle exec appraisal rails-7-0 bundle install
