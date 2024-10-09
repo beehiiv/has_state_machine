@@ -11,7 +11,7 @@ class BranchCheck
 
   def initialize
     @current_branch = `git rev-parse --abbrev-ref HEAD`.strip
-    @allowed_branches = ["master"]
+    @allowed_branches = ["main"]
   end
 
   def check
@@ -125,7 +125,7 @@ if prompt == "Y"
   `git commit -m 'Bump version to #{new_version}'`
 
   puts "--- Pushing Changes ---"
-  `git push origin master`
+  `git push origin main`
 
   puts "--- Publishing Gem ---"
   `bundle exec rake release`
