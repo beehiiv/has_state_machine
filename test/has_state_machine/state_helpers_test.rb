@@ -11,6 +11,10 @@ ActiveRecord::Migration.create_table :trees, force: true do |t|
   t.string :status
 end
 
+ActiveRecord::Migration.create_table :animals, force: true do |t|
+  t.string :status
+end
+
 class Mountain < ActiveRecord::Base
   has_state_machine states: %i[foo bar baz]
   has_many :trees
@@ -19,6 +23,16 @@ end
 class Tree < ActiveRecord::Base
   has_state_machine states: %i[foo bar baz]
   belongs_to :mountain
+end
+
+class Animal < ActiveRecord::Base
+  validate :failing_validation
+
+  has_state_machine states: %i[foo bar baz]
+
+  def failing_validation
+    errors.add(:fail, "animal is not valid")
+  end
 end
 
 module Workflow
@@ -37,6 +51,16 @@ module Workflow
 
   module Tree
     class Foo < HasStateMachine::State
+    end
+  end
+
+  module Animal
+    class Baz < HasStateMachine::State
+      validate :failing_validation
+
+      def failing_validation
+        errors.add(:base, "dummy validation failed")
+      end
     end
   end
 end
@@ -81,6 +105,17 @@ class HasStateMachine::StateHelpersTest < ActiveSupport::TestCase
       subject.skip_state_validations = true
 
       assert subject.valid?
+    end
+
+    describe "object also contains errors" do
+      subject { Animal.new }
+
+      it "does not remove already existing errors from the object if state also has errors" do
+        subject.status = "baz"
+        refute subject.valid?
+
+        assert subject.errors.to_a.length == 2
+      end
     end
   end
 

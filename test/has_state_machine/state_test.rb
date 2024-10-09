@@ -79,14 +79,6 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
     it { assert_equal %w[swimming floating tanning tubing lotioning], subject.possible_transitions }
   end
 
-  describe "#errors" do
-    it "delegates to the object" do
-      object.errors.add(:base, "foobar")
-
-      assert_equal({base: %w[foobar]}, subject.errors.messages)
-    end
-  end
-
   describe "#transition_to" do
     describe "callbacks" do
       it "runs before_transition callbacks" do
