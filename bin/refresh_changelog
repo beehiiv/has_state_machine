@@ -78,7 +78,7 @@ module AutoChangelog
     #   - Git commit message
     #   - Git commit message
     def entry_section_text(section)
-      git_messages_by_marker(section[:marker]).then do |git_messages|
+      git_messages_by_marker(section[:markers]).then do |git_messages|
         return "" if git_messages.empty?
 
         section_header = "### #{section[:title]}\n"
@@ -132,10 +132,14 @@ module AutoChangelog
     ##
     # Parses the git log looking for the specified marker for a
     # given entry section matching the line that contains it.
-    def git_messages_by_marker(marker)
-      git_commits_between_versions
-        .scan(/^(.*)#{marker}(.*)$/)
-        .map { |message| message.map(&:strip).join(" ") }
+    def git_messages_by_marker(markers)
+      messages = git_commits_between_versions
+
+      markers.map do |marker|
+        messages
+          .scan(/^(.*)#{marker}(.*)$/)
+          .map { |message| message.map(&:strip).join(" ") }
+      end.flatten
     end
 
     ##
@@ -186,12 +190,12 @@ AutoChangelog.configure do |config|
   config.app_version = HasStateMachine::VERSION
 
   config.entry_sections = [
-    { title: "Bug Fixes", marker: ";B" },
-    { title: "Changes", marker: ";C" },
-    { title: "Deprecations", marker: ";D" },
-    { title: "Features", marker: ";F" },
-    { title: "Removed" , marker: ";R" },
-    { title: "Security", marker: ";S" }
+    { title: "Bug Fixes", markers: [";B", "fix:"] },
+    { title: "Changes", markers: [";C", "misc:"] },
+    { title: "Deprecations", markers: [";D"] },
+    { title: "Features", markers: [";F", "feat:"] },
+    { title: "Removed" , markers: [";R"] },
+    { title: "Security", markers: [";S", "sec:"] }
   ]
 end
 
