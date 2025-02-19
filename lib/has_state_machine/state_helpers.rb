@@ -67,7 +67,7 @@ module HasStateMachine
         # @example Check if a post is published
         #   > post.published?
         #   #=> true
-        define_method "#{state}?" do
+        define_method :"#{state}?" do
           current_state == state
         end
       end
@@ -78,7 +78,7 @@ module HasStateMachine
       # Getter for the current state of the model based on the configured state
       # attribute.
       def current_state
-        attributes.with_indifferent_access[state_attribute]
+        self[state_attribute]
       end
 
       ##
@@ -114,7 +114,12 @@ module HasStateMachine
       def state_instance_validations
         return unless state_class.present?
 
-        public_send(state_attribute.to_s).valid?
+        state_instance = public_send(state_attribute.to_s)
+        return if state_instance.valid?
+
+        state_instance.errors.each do |error|
+          errors.add(error.attribute, error.type)
+        end
       end
     end
 

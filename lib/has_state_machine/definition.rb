@@ -51,7 +51,7 @@ module HasStateMachine
         # Defines the namespace of the models possible states.
         # Can be overwritten to use a different namespace.
         define_singleton_method :workflow_namespace do
-          (options[:workflow_namespace] || "Workflow::#{self}")
+          options[:workflow_namespace] || "Workflow::#{self}"
         end
 
         ##

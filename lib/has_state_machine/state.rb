@@ -21,11 +21,6 @@ module HasStateMachine
     delegate :possible_transitions, :transactional?, :state, to: "self.class"
 
     ##
-    # Add errors to the ActiveRecord object rather than the HasStateMachine::State
-    # class.
-    delegate :errors, to: :object
-
-    ##
     # Initializes the HasStateMachine::State instance.
     #
     # @example
@@ -33,7 +28,7 @@ module HasStateMachine
     def initialize(object)
       @object = object
 
-      super state
+      super(state)
     end
 
     ##
