@@ -7,6 +7,7 @@ module HasStateMachine
     extend ActiveModel::Model
     extend ActiveModel::Callbacks
     include ActiveModel::Validations
+    include ActiveModel::Validations::Callbacks
 
     attr_reader :object, :state
 
@@ -19,6 +20,11 @@ module HasStateMachine
     # possible_transitions - Retrieves the next available transitions for a given state.
     # transactional? - Determines whether or not the transition should happen with a transactional block.
     delegate :possible_transitions, :transactional?, :state, to: "self.class"
+
+    ##
+    # If errors are added to the state during the transition, we want to ensure
+    # that those get carried over to the object if the settings allow for it
+    after_validation :add_errors_to_object
 
     ##
     # Initializes the HasStateMachine::State instance.
@@ -84,18 +90,16 @@ module HasStateMachine
 
     private
 
-    ##
-    # If errors are added to the state during the transition, we want to ensure
-    # that those get carried over to the object if the settings allow for it
-    after_transition do
-      if object.state_validations_on_object?
-        errors.each do |error|
-          object.errors.add(error.attribute, error.type)
-        end
+    def add_errors_to_object
+      return unless object.state_validations_on_object?
+
+      errors.each do |error|
+        object.errors.add(error.attribute, error.type)
       end
     end
 
     def rollback_transition
+      add_errors_to_object
       raise ActiveRecord::Rollback
     end
 
