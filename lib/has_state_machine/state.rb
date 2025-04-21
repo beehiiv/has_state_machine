@@ -84,6 +84,17 @@ module HasStateMachine
 
     private
 
+    ##
+    # If errors are added to the state during the transition, we want to ensure
+    # that those get carried over to the object if the settings allow for it
+    after_transition do
+      if object.state_validations_on_object?
+        errors.each do |error|
+          object.errors.add(error.attribute, error.type)
+        end
+      end
+    end
+
     def rollback_transition
       raise ActiveRecord::Rollback
     end
