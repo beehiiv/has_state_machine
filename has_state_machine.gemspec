@@ -21,7 +21,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "rails", ">= 5.2"
 
   spec.add_development_dependency "sqlite3", ">= 1.5"
-  spec.add_development_dependency "nio4r", ">= 2.5.9"
   spec.add_development_dependency "pry"
   spec.add_development_dependency "pry-rails"
   spec.add_development_dependency "standard"

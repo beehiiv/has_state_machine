@@ -190,7 +190,6 @@ PLATFORMS
 DEPENDENCIES
   appraisal
   has_state_machine!
-  nio4r (>= 2.5.9)
   pry
   pry-rails
   sqlite3 (>= 1.5)
