@@ -94,8 +94,8 @@ module HasStateMachine
     ##
     # Determines if the given desired state exists in the predetermined
     # list of allowed transitions.
-    def can_transition?(desired_state_instance)
-      possible_transitions.include? desired_state_instance.to_s
+    def can_transition?(desired_state)
+      possible_transitions.include? desired_state.to_s
     end
 
     ##
