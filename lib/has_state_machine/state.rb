@@ -57,7 +57,7 @@ module HasStateMachine
 
       transitioned
     ensure
-      desired_state_instance && desired_state_instance.errors.each do |error|
+      (desired_state_instance&.errors || []).each do |error|
         object.errors.add(error.attribute, error.type)
       end
     end
