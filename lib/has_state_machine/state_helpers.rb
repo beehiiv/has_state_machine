@@ -118,7 +118,7 @@ module HasStateMachine
         return if current_state_instance.valid?
 
         current_state_instance.errors.each do |error|
-          object.errors.add(error.attribute, error.type)
+          errors.add(error.attribute, error.type)
         end
       end
     end
