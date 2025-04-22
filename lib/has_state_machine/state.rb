@@ -7,7 +7,6 @@ module HasStateMachine
     extend ActiveModel::Model
     extend ActiveModel::Callbacks
     include ActiveModel::Validations
-    include ActiveModel::Validations::Callbacks
 
     attr_reader :object, :state
 
@@ -20,11 +19,6 @@ module HasStateMachine
     # possible_transitions - Retrieves the next available transitions for a given state.
     # transactional? - Determines whether or not the transition should happen with a transactional block.
     delegate :possible_transitions, :transactional?, :state, to: "self.class"
-
-    ##
-    # If errors are added to the state during the transition, we want to ensure
-    # that those get carried over to the object if the settings allow for it
-    after_validation :add_errors_to_object
 
     ##
     # Initializes the HasStateMachine::State instance.
@@ -49,20 +43,23 @@ module HasStateMachine
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state, **options)
       transitioned = false
+      desired_state_instance = state_instance(desired_state)
 
       with_transition_options(options) do
-        return false unless valid_transition?(desired_state.to_s)
+        return false unless valid_transition?(desired_state_instance)
 
-        desired_state = state_instance(desired_state.to_s)
-
-        transitioned = if desired_state.transactional?
-          desired_state.perform_transactional_transition!
+        transitioned = if desired_state_instance.transactional?
+          desired_state_instance.perform_transactional_transition!
         else
-          desired_state.perform_transition!
+          desired_state_instance.perform_transition!
         end
       end
 
       transitioned
+    ensure
+      desired_state_instance.errors.each do |error|
+        object.errors.add(error.attribute, error.type)
+      end
     end
 
     ##
@@ -90,24 +87,15 @@ module HasStateMachine
 
     private
 
-    def add_errors_to_object
-      return unless object.state_validations_on_object?
-
-      errors.each do |error|
-        object.errors.add(error.attribute, error.type)
-      end
-    end
-
     def rollback_transition
-      add_errors_to_object
       raise ActiveRecord::Rollback
     end
 
     ##
     # Determines if the given desired state exists in the predetermined
     # list of allowed transitions.
-    def can_transition?(desired_state)
-      possible_transitions.include? desired_state
+    def can_transition?(desired_state_instance)
+      possible_transitions.include? desired_state_instance.to_s
     end
 
     ##
@@ -123,12 +111,12 @@ module HasStateMachine
       klass&.new(object)
     end
 
-    def valid_transition?(desired_state)
+    def valid_transition?(desired_state_instance)
       return true if object.skip_state_validations
 
       object.valid? &&
-        can_transition?(desired_state) &&
-        state_instance(desired_state)&.valid?
+        can_transition?(desired_state_instance) &&
+        desired_state_instance&.valid?
     end
 
     def with_transition_options(options, &block)
