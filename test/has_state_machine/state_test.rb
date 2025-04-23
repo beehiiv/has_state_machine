@@ -133,7 +133,6 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
       end
 
       describe "with transients" do
-        end
         it "returns true if the transaction is successfull" do
           assert_equal true, subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
           assert_equal "lotioning", object.reload.status.to_s
@@ -148,6 +147,7 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
           assert_equal false, subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)
           assert_equal "diving", object.reload.status.to_s
         end
+      end
     end
   end
 end
