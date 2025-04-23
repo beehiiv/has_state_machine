@@ -155,7 +155,7 @@ post.valid?
 
 By default, when attempting to transition an object to another state, it checks:
   * Validations defined on the object
-  * The possible transitions that are allowed from the object's current state
+  * That the new state is one of the allowed transitions from the current state
   * Any validations defined on the new state
 
 If any are found to be invalid, the transition will fail. Any errors from validations on the new state will be added to the object.
