@@ -114,10 +114,10 @@ module HasStateMachine
       def state_instance_validations
         return unless state_class.present?
 
-        state_instance = public_send(state_attribute.to_s)
-        return if state_instance.valid?
+        current_state_instance = public_send(state_attribute.to_s)
+        return if current_state_instance.valid?
 
-        state_instance.errors.each do |error|
+        current_state_instance.errors.each do |error|
           errors.add(error.attribute, error.type)
         end
       end
