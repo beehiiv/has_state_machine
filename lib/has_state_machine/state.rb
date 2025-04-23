@@ -19,7 +19,7 @@ module HasStateMachine
     # possible_transitions - Retrieves the next available transitions for a given state.
     # transactional? - Determines whether or not the transition should happen with a transactional block.
     # state - The underscored name of the state
-    # tranients - Specified list of optional transient attributes on this state
+    # transients - Specified list of optional transient attributes on this state
     delegate :possible_transitions, :transactional?, :state, :transients, to: "self.class"
 
     ##
