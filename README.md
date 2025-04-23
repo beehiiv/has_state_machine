@@ -11,6 +11,7 @@ HasStateMachine uses ruby classes to make creating a finite state machine for yo
   - [Contents](#contents)
   - [Installation](#installation)
   - [Usage](#usage)
+    - [Validating Transitions](#validating-transitions)
     - [Advanced Usage](#advanced-usage)
   - [Contributing](#contributing)
   - [License](#license)
@@ -115,6 +116,18 @@ post.status.transition_to(:archived)
 # == Post has been archived ==
 # == Transitioned from published ==
 # => true
+```
+
+### Validating Transitions
+
+If you'd like to check that an object can be transitioned into a new state, use the `can_transition?` method. This checks to see if the provided argument is in the `transitions_to` array.
+
+Example:
+```ruby
+post = Post.create(status: "draft")
+
+post.status.can_transition?(:published) # => true
+post.status.can_transition?(:other_state) # => false
 ```
 
 ### Advanced Usage
