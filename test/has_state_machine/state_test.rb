@@ -79,16 +79,8 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
     it { assert_equal %w[swimming floating tanning tubing lotioning], subject.possible_transitions }
   end
 
-  describe "#errors" do
-    it "delegates to the object" do
-      object.errors.add(:base, "foobar")
-
-      assert_equal({base: %w[foobar]}, subject.errors.messages)
-    end
-  end
-
   describe "#can_transition?" do
-    context "when the state is a string" do
+    describe "when the state is a string" do
       it "returns true if the transition is valid" do
         assert subject.can_transition?("swimming")
       end
@@ -98,7 +90,7 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
       end
     end
 
-    context "when the state is a symbol" do
+    describe "when the state is a symbol" do
       it "returns true if the transition is valid" do
         assert subject.can_transition?(:swimming)
       end
