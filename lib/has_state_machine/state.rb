@@ -166,9 +166,9 @@ module HasStateMachine
         @transactional = transactional
         @transients = transients.map(&:to_sym)
 
-        transients.each do |arg_name|
-          define_method(arg_name) do
-            instance_variable_get(:"@#{arg_name}")
+        transients.each do |transient_name|
+          define_method(transient_name) do
+            instance_variable_get(:"@#{transient_name}")
           end
         end
       end
