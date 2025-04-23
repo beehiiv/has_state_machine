@@ -43,20 +43,23 @@ module HasStateMachine
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state, **options)
       transitioned = false
+      desired_state_instance = state_instance(desired_state)
 
       with_transition_options(options) do
-        return false unless valid_transition?(desired_state.to_s)
+        return false unless valid_transition?(desired_state_instance)
 
-        desired_state = state_instance(desired_state.to_s)
-
-        transitioned = if desired_state.transactional?
-          desired_state.perform_transactional_transition!
+        transitioned = if desired_state_instance.transactional?
+          desired_state_instance.perform_transactional_transition!
         else
-          desired_state.perform_transition!
+          desired_state_instance.perform_transition!
         end
       end
 
       transitioned
+    ensure
+      (desired_state_instance&.errors || []).each do |error|
+        object.errors.add(error.attribute, error.type)
+      end
     end
 
     ##
@@ -92,7 +95,7 @@ module HasStateMachine
     # Determines if the given desired state exists in the predetermined
     # list of allowed transitions.
     def can_transition?(desired_state)
-      possible_transitions.include? desired_state
+      possible_transitions.include? desired_state.to_s
     end
 
     ##
@@ -108,12 +111,12 @@ module HasStateMachine
       klass&.new(object)
     end
 
-    def valid_transition?(desired_state)
+    def valid_transition?(desired_state_instance)
       return true if object.skip_state_validations
 
       object.valid? &&
-        can_transition?(desired_state) &&
-        state_instance(desired_state)&.valid?
+        can_transition?(desired_state_instance) &&
+        desired_state_instance&.valid?
     end
 
     def with_transition_options(options, &block)
