@@ -77,6 +77,28 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
     it { assert_equal %w[swimming floating tanning tubing lotioning], subject.possible_transitions }
   end
 
+  describe "#can_transition?" do
+    describe "when the state is a string" do
+      it "returns true if the transition is valid" do
+        assert subject.can_transition?("swimming")
+      end
+
+      it "returns false if the transition is invalid" do
+        refute subject.can_transition?("running")
+      end
+    end
+
+    describe "when the state is a symbol" do
+      it "returns true if the transition is valid" do
+        assert subject.can_transition?(:swimming)
+      end
+
+      it "returns false if the transition is invalid" do
+        refute subject.can_transition?(:running)
+      end
+    end
+  end
+
   describe "#transition_to" do
     describe "callbacks" do
       it "runs before_transition callbacks" do

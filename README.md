@@ -119,6 +119,16 @@ post.status.transition_to(:archived)
 # => true
 ```
 
+If you'd like to check that an object can be transitioned into a new state, use the `can_transition?` method. This checks to see if the provided argument is in the `transitions_to` array defined on the object's current state. (This does not run any validations that may be defined on the new state)
+
+Example:
+```ruby
+post = Post.create(status: "draft")
+
+post.status.can_transition?(:published) # => true
+post.status.can_transition?(:other_state) # => false
+```
+
 ### Validations and Error Handling
 
 You can define custom validations on a given state to determine whether an object in that state or a transition to that state is valid.

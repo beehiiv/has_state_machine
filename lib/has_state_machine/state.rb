@@ -38,6 +38,15 @@ module HasStateMachine
     end
 
     ##
+    # Determines if the given desired state exists in the predetermined
+    # list of allowed transitions.
+    # @param desired_state [String, Symbol] the state to check if the object can transition to
+    # @return [Boolean] whether or not the object can transition to the desired state
+    def can_transition?(desired_state)
+      possible_transitions.include? desired_state.to_s
+    end
+
+    ##
     # Checks to see if the desired state is valid and then gives
     # responsibility to the desired state's instance to make the
     # transition.
@@ -96,13 +105,6 @@ module HasStateMachine
 
     def rollback_transition
       raise ActiveRecord::Rollback
-    end
-
-    ##
-    # Determines if the given desired state exists in the predetermined
-    # list of allowed transitions.
-    def can_transition?(desired_state)
-      possible_transitions.include? desired_state.to_s
     end
 
     ##
