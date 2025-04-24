@@ -4,8 +4,6 @@ require "test_helper"
 
 ActiveRecord::Migration.create_table :swimmers, force: true do |t|
   t.string :status
-  t.boolean :needs_lotion_before, default: true
-  t.boolean :needs_lotion_after, default: true
 end
 
 class Swimmer < ActiveRecord::Base
@@ -58,14 +56,14 @@ module Workflow
     end
 
     class Lotioning < HasStateMachine::State
-      state_options transactional: true
+      state_options transactional: true, transients: %i[needs_lotion_before needs_lotion_after]
 
       before_transition do
-        rollback_transition unless object.needs_lotion_before
+        rollback_transition unless needs_lotion_before
       end
 
       after_transition do
-        rollback_transition unless object.needs_lotion_after
+        rollback_transition unless needs_lotion_after
       end
     end
   end
@@ -156,22 +154,21 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
         assert_equal "diving", object.reload.status
       end
 
-      it "returns true if the transaction is successfull" do
-        object.update(status: "diving", needs_lotion_before: true, needs_lotion_after: true)
-        assert_equal true, subject.transition_to(:lotioning)
-        assert_equal "lotioning", object.reload.status.to_s
-      end
+      describe "with transients" do
+        it "returns true if the transaction is successfull" do
+          assert_equal true, subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
+          assert_equal "lotioning", object.reload.status.to_s
+        end
 
-      it "returns false if the transaction is rolled back in the after_transition" do
-        object.update(status: "diving", needs_lotion_before: true, needs_lotion_after: false)
-        assert_equal false, subject.transition_to(:lotioning)
-        assert_equal "diving", object.reload.status.to_s
-      end
+        it "returns false if the transaction is rolled back in the after_transition" do
+          assert_equal false, subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: false)
+          assert_equal "diving", object.reload.status.to_s
+        end
 
-      it "returns false if the transaction is rolled back in the before_transition" do
-        object.update(status: "diving", needs_lotion_before: false, needs_lotion_after: true)
-        assert_equal false, subject.transition_to(:lotioning)
-        assert_equal "diving", object.reload.status.to_s
+        it "returns false if the transaction is rolled back in the before_transition" do
+          assert_equal false, subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)
+          assert_equal "diving", object.reload.status.to_s
+        end
       end
     end
   end

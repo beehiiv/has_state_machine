@@ -1,6 +1,6 @@
 # HasStateMachine
 
-[![Build Status](https://github.com/bharget/has_state_machine/workflows/Tests/badge.svg)](https://github.com/bharget/has_state_machine/actions)
+[![CI](https://github.com/beehiiv/has_state_machine/actions/workflows/ci.yml/badge.svg)](https://github.com/beehiiv/has_state_machine/actions/workflows/ci.yml)
 [![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
 
 HasStateMachine uses ruby classes to make creating a finite state machine for your ActiveRecord models a breeze.
@@ -10,8 +10,9 @@ HasStateMachine uses ruby classes to make creating a finite state machine for yo
 - [HasStateMachine](#hasstatemachine)
   - [Contents](#contents)
   - [Installation](#installation)
-  - [Usage](#usage)
-    - [Validating Transitions](#validating-transitions)
+  - [Usage](#basic-usage)
+    - [Basic Usage](#basic-usage)
+    - [Validations & Error Handling](#validations-and-error-handling)
     - [Advanced Usage](#advanced-usage)
   - [Contributing](#contributing)
   - [License](#license)
@@ -36,12 +37,12 @@ Or install it yourself as:
 $ gem install has_state_machine
 ```
 
-## Usage
+## Basic Usage
 
 You must first use the `has_state_machine` macro to define your state machine at
 a high level. This includes defining the possible states for your object as well
 as some optional configuration should you want to change the default behavior of
-the state machine.
+the state machine (more on this later).
 
 ```ruby
 # By default, it is assumed that the "state" of the object is
@@ -53,7 +54,7 @@ end
 
 Now you must define the classes for the states in your state machine. By default,
 `HasStateMachine` assumes that these will be under the `Workflow` namespace following
-the pattern of `Workflow::#{ObjectClass}::#{State}`. The state objects must inherit
+the pattern of `Workflow::#{ObjectClass}::#{State}`. The state classes must inherit
 from `HasStateMachine::State`.
 
 ```ruby
@@ -118,9 +119,7 @@ post.status.transition_to(:archived)
 # => true
 ```
 
-### Validating Transitions
-
-If you'd like to check that an object can be transitioned into a new state, use the `can_transition?` method. This checks to see if the provided argument is in the `transitions_to` array.
+If you'd like to check that an object can be transitioned into a new state, use the `can_transition?` method. This checks to see if the provided argument is in the `transitions_to` array defined on the object's current state. (This does not run any validations that may be defined on the new state)
 
 Example:
 ```ruby
@@ -130,9 +129,73 @@ post.status.can_transition?(:published) # => true
 post.status.can_transition?(:other_state) # => false
 ```
 
+### Validations and Error Handling
+
+You can define custom validations on a given state to determine whether an object in that state or a transition to that state is valid.
+
+By default, validations defined on the state will be run as part of the object validations if the object is in that state.
+
+```ruby
+post = Post.create(status: "published", title: "Title")
+
+post.valid?
+# => true
+
+post.title = nil
+post.valid?
+# => false
+```
+
+If you wish to change this behavior and not have the state validations run on the object, you can specify that with the `state_validations_on_object` option when defining your state machine.
+
+```ruby
+class Post < ApplicationRecord
+  has_state_machine states: %i[draft published, archived], state_validations_on_object: false
+end
+
+post = Post.create(status: "published", title: "Title")
+
+post.valid?
+# => true
+
+post.title = nil
+post.valid?
+# => true
+```
+
+By default, when attempting to transition an object to another state, it checks:
+  * Validations defined on the object
+  * That the new state is one of the allowed transitions from the current state
+  * Any validations defined on the new state
+
+If any are found to be invalid, the transition will fail. Any errors from validations on the new state will be added to the object.
+
+```ruby
+post = Post.create(status: "draft")
+
+post.title = nil
+post.status.transition_to(:published)
+# => false
+
+post.errors.full_messages
+# => ["Title can't be blank"]
+```
+
+If you wish to bypass this behavior and skip validations during a transition, you can do that:
+
+```ruby
+post = Post.create(status: "draft")
+
+post.title = nil
+post.status.transition_to(:published, skip_validations: true)
+# => true
+```
+
 ### Advanced Usage
 
-Sometimes there may be a situation where you want to manually roll back a state change in one of the provided callbacks. To do this, add the `transactional: true` option to the `state_options` declaration and use the `rollback_transition` method in your callback. This will allow you to prevent the transition from persisting if something further down the line fails.
+#### Transactional Transitions
+
+There may be a situation where you want to manually rollback a state change in one of the provided transition callbacks. To do this, add the `transactional: true` option to the `state_options` declaration. This results in the transition being wrapped in a transaction. You can then use the `rollback_transition` method in your callback when you want to trigger a rollback of the transaction. This will allow you to prevent the transition from persisting if something further down the line fails.
 
 ```ruby
 module Workflow
@@ -150,6 +213,29 @@ module Workflow
     end
   end
 end
+```
+
+#### Transient Transition Variables
+
+Sometimes you may may want to pass additional arguments to a state transition for additional context in your transition callbacks. To do this, add the `transients` option to the `state_options` declaration. This allows you to define any additional attributes you want to be able to pass along during a state transition to that state.
+
+```ruby
+module Workflow
+  class Post::Archived < HasStateMachine::State
+    state_options transients: %i[user]
+
+    after_transition do
+      puts "== Post archived by #{user.name} =="
+    end
+  end
+end
+
+current_user = User.create(name: "John Doe")
+post = Post.create(status: "published")
+
+post.status.transition_to(:archived, user: current_user)
+# == Post archived by John Doe ==
+# => true
 ```
 
 ## Contributing
