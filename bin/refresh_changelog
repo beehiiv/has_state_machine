@@ -192,9 +192,9 @@ AutoChangelog.configure do |config|
   config.entry_sections = [
     { title: "Bug Fixes", markers: [";B", "fix:"] },
     { title: "Changes", markers: [";C", "misc:"] },
-    { title: "Deprecations", markers: [";D"] },
+    { title: "Deprecations", markers: [";D", "deprecate:"] },
     { title: "Features", markers: [";F", "feat:"] },
-    { title: "Removed" , markers: [";R"] },
+    { title: "Removed" , markers: [";R", "remove:"] },
     { title: "Security", markers: [";S", "sec:"] }
   ]
 end

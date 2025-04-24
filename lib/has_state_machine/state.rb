@@ -152,14 +152,6 @@ module HasStateMachine
       end
 
       ##
-      # Setter for the HasStateMachine::State classes to define the possible
-      # states the current state can transition to.
-      def transitions_to(states)
-        state_options(transitions_to: states)
-        HasStateMachine::Deprecation.deprecation_warning(:transitions_to, "use state_options instead")
-      end
-
-      ##
       # Set the options for the HasStateMachine::State classes to define the possible
       # states the current state can transition to and whether or not transitioning
       # to the state should be performed within a transaction.
