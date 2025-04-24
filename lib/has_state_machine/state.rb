@@ -18,17 +18,32 @@ module HasStateMachine
     ##
     # possible_transitions - Retrieves the next available transitions for a given state.
     # transactional? - Determines whether or not the transition should happen with a transactional block.
-    delegate :possible_transitions, :transactional?, :state, to: "self.class"
+    # state - The underscored name of the state
+    # transients - Specified list of optional transient attributes on this state
+    delegate :possible_transitions, :transactional?, :state, :transients, to: "self.class"
 
     ##
     # Initializes the HasStateMachine::State instance.
     #
     # @example
     #   state = Workflow::Post::Draft.new(post) #=> "draft"
-    def initialize(object)
+    def initialize(object, transient_values = {})
       @object = object
 
+      transient_values.to_h.slice(*transients).each do |transient, value|
+        instance_variable_set(:"@#{transient}", value)
+      end
+
       super(state)
+    end
+
+    ##
+    # Determines if the given desired state exists in the predetermined
+    # list of allowed transitions.
+    # @param desired_state [String, Symbol] the state to check if the object can transition to
+    # @return [Boolean] whether or not the object can transition to the desired state
+    def can_transition?(desired_state)
+      possible_transitions.include? desired_state.to_s
     end
 
     ##
@@ -43,7 +58,8 @@ module HasStateMachine
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state, **options)
       transitioned = false
-      desired_state_instance = state_instance(desired_state)
+      options = options.transform_keys(&:to_sym)
+      desired_state_instance = state_instance(desired_state, options)
 
       with_transition_options(options) do
         return false unless valid_transition?(desired_state_instance)
@@ -92,13 +108,6 @@ module HasStateMachine
     end
 
     ##
-    # Determines if the given desired state exists in the predetermined
-    # list of allowed transitions.
-    def can_transition?(desired_state)
-      possible_transitions.include? desired_state.to_s
-    end
-
-    ##
     # Helper method for grabbing the previous state of the object after
     # it has been transitioned to the new state. Useful in
     # after_transition blocks
@@ -106,9 +115,9 @@ module HasStateMachine
       object.previous_changes[object.state_attribute]&.first
     end
 
-    def state_instance(desired_state)
+    def state_instance(desired_state, transient_values)
       klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
-      klass&.new(object)
+      klass&.new(object, transient_values)
     end
 
     def valid_transition?(desired_state_instance)
@@ -138,13 +147,24 @@ module HasStateMachine
         @transactional || false
       end
 
+      def transients
+        @transients || []
+      end
+
       ##
       # Set the options for the HasStateMachine::State classes to define the possible
       # states the current state can transition to and whether or not transitioning
       # to the state should be performed within a transaction.
-      def state_options(transitions_to: [], transactional: false)
+      def state_options(transitions_to: [], transactional: false, transients: [])
         @possible_transitions = transitions_to.map(&:to_s)
         @transactional = transactional
+        @transients = transients.map(&:to_sym)
+
+        transients.each do |transient_name|
+          define_method(transient_name) do
+            instance_variable_get(:"@#{transient_name}")
+          end
+        end
       end
     end
   end
