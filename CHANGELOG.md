@@ -7,6 +7,18 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.0.0] - Apr 24, 2025
+9180eb2
+### Bug Fixes
+-  add state errors to object in ensure block (#52)
+### Changes
+-  Bump rexml from 3.2.4 to 3.4.1 (#29)
+### Features
+-  add transients option for state classes (#54)
+-  expose the can_transition? method for public use (#51)
+### Removed
+-  deprecated transition_to state method (#53)
+----
 ## [0.6.1] - Oct  9, 2024
 5e1ebba
 ### Bug Fixes
