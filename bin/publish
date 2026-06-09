@@ -127,8 +127,8 @@ if prompt == "Y"
   puts "--- Pushing Changes ---"
   `git push origin main`
 
-  puts "--- Publishing Gem ---"
-  `bundle exec rake release`
+  puts "--- Action Required: Publish Gem ---"
+  puts "Now run `bundle exec rake release` to publish the gem to rubygems"
 else
   puts "--- Aborting Gem Release ---"
 end
