@@ -16,6 +16,11 @@ module HasStateMachine
     define_model_callbacks :transition, only: %i[before after]
 
     ##
+    # Defines the after_transition_commit callback. It runs only after a
+    # transition has committed.
+    define_model_callbacks :transition_commit, only: %i[after]
+
+    ##
     # possible_transitions - Retrieves the next available transitions for a given state.
     # transactional? - Determines whether or not the transition should happen with a transactional block.
     # state - The underscored name of the state
@@ -80,25 +85,34 @@ module HasStateMachine
 
     ##
     # Makes the actual transition from one state to the next and
-    # runs the before and after transition callbacks.
+    # runs the before and after transition callbacks. The
+    # after_transition_commit callbacks run after the update completes
+    # and only when it succeeds.
     def perform_transition!
-      run_callbacks :transition do
-        object.update("#{object.state_attribute}": state)
+      run_callbacks :transition_commit do
+        run_callbacks :transition do
+          object.update("#{object.state_attribute}": state)
+        end
       end
     end
 
     ##
     # Makes the actual transition from one state to the next and
     # runs the before and after transition callbacks in a transaction
-    # to allow for roll backs.
+    # to allow for roll backs. The after_transition_commit callbacks run
+    # outside the transaction and only when it commits (not on rollback).
     def perform_transactional_transition!
-      ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
-        run_callbacks :transition do
-          rollback_transition unless object.update("#{object.state_attribute}": state)
+      run_callbacks :transition_commit do
+        ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+          run_callbacks :transition do
+            rollback_transition unless object.update("#{object.state_attribute}": state)
+          end
         end
-      end
 
-      object.reload.public_send(object.state_attribute) == state
+        @previous_state = previous_state
+
+        object.reload.public_send(object.state_attribute) == state
+      end
     end
 
     private
@@ -112,7 +126,7 @@ module HasStateMachine
     # it has been transitioned to the new state. Useful in
     # after_transition blocks
     def previous_state
-      object.previous_changes[object.state_attribute]&.first
+      @previous_state.presence || object.previous_changes[object.state_attribute]&.first
     end
 
     def state_instance(desired_state, transient_values)
