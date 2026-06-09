@@ -9,7 +9,14 @@ end
 class Swimmer < ActiveRecord::Base
   attr_accessor :before_transition_boolean
   attr_accessor :after_transition_boolean
+  attr_accessor :after_transition_commit_boolean
   attr_accessor :previous_state
+  attr_accessor :previous_state_in_commit
+  attr_writer :callback_sequence
+
+  def callback_sequence
+    @callback_sequence ||= []
+  end
 
   has_state_machine states: %i[diving swimming floating tanning tubing lotioning]
 end
@@ -28,6 +35,13 @@ module Workflow
       after_transition do
         object.after_transition_boolean = true
         object.previous_state = previous_state
+        object.callback_sequence << :after_transition
+      end
+
+      after_transition_commit do
+        object.after_transition_commit_boolean = true
+        object.previous_state_in_commit = previous_state
+        object.callback_sequence << :after_transition_commit
       end
     end
 
@@ -64,6 +78,11 @@ module Workflow
 
       after_transition do
         rollback_transition unless needs_lotion_after
+      end
+
+      after_transition_commit do
+        object.after_transition_commit_boolean = true
+        object.previous_state_in_commit = previous_state
       end
     end
   end
@@ -118,6 +137,33 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
         subject.transition_to(:swimming)
         assert_equal "diving", object.previous_state
       end
+
+      it "runs after_transition_commit callbacks" do
+        refute object.after_transition_commit_boolean
+        subject.transition_to(:swimming)
+        assert object.after_transition_commit_boolean
+      end
+
+      it "runs after_transition_commit after after_transition" do
+        subject.transition_to(:swimming)
+        assert_equal %i[after_transition after_transition_commit], object.callback_sequence
+      end
+
+      it "has access to the previous state in after_transition_commit" do
+        assert object.previous_state_in_commit.nil?
+        subject.transition_to(:swimming)
+        assert_equal "diving", object.previous_state_in_commit
+      end
+
+      it "does not run after_transition_commit on an invalid transition" do
+        refute subject.transition_to(:running)
+        refute object.after_transition_commit_boolean
+      end
+
+      it "does not run after_transition_commit when state validations fail" do
+        refute subject.transition_to(:floating)
+        refute object.after_transition_commit_boolean
+      end
     end
 
     it "updates the object's state attribute" do
@@ -168,6 +214,26 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
         it "returns false if the transaction is rolled back in the before_transition" do
           assert_equal false, subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)
           assert_equal "diving", object.reload.status.to_s
+        end
+
+        it "runs after_transition_commit when the transaction commits" do
+          subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
+          assert object.after_transition_commit_boolean
+        end
+
+        it "does not run after_transition_commit when rolled back in the after_transition" do
+          subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: false)
+          refute object.after_transition_commit_boolean
+        end
+
+        it "does not run after_transition_commit when rolled back in the before_transition" do
+          subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)
+          refute object.after_transition_commit_boolean
+        end
+
+        it "has access to the previous state in after_transition_commit" do
+          subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
+          assert_equal "diving", object.previous_state_in_commit
         end
       end
     end

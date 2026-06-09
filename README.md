@@ -96,6 +96,13 @@ module Workflow
       # after_transition callbacks as well.
       Rails.logger.info "== Transitioned from #{previous_state} ==\n"
     end
+
+    # after_transition_commit runs only once the transition has been
+    # committed: after the record is saved for normal transitions, and
+    # outside the transaction for transactional transitions (see below).
+    after_transition_commit do
+      MyJob.perform_later(object)
+    end
   end
 end
 ```
@@ -206,10 +213,20 @@ module Workflow
       rollback_transition unless notified_watchers?
     end
 
+    after_transition_commit do
+      enqueue_external_work
+    end
+
     private
 
+    def enqueue_external_work
+      # Any work you want to happen only after the transition is committed.
+      # Enqueuing a job, calling an external API, sending a webhook, etc.
+    end
+
     def notified_watchers?
-      #...
+      # Any dependent work that you want to run that should play a part in determining
+      # whether the transition was successful or not and needs to be rolled back.
     end
   end
 end

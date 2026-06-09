@@ -25,4 +25,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "pry-rails"
   spec.add_development_dependency "standard"
   spec.add_development_dependency "appraisal"
+  spec.add_development_dependency "minitest", "~> 5.1"
 end
