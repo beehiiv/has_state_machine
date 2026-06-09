@@ -190,6 +190,7 @@ PLATFORMS
 DEPENDENCIES
   appraisal
   has_state_machine!
+  minitest (~> 5.1)
   pry
   pry-rails
   sqlite3 (>= 1.5)
