@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.1.0] - Jun  9, 2026
+762bfb0
+### Features
+-  add after_transition_commit hook (#55)
+----
 ## [1.0.0] - Apr 24, 2025
 9180eb2
 ### Bug Fixes
