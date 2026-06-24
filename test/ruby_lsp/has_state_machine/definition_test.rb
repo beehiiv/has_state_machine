@@ -170,6 +170,26 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
 
       assert_equal ["file:///app/models/custom_post.rb"], response.map(&:uri)
     end
+
+    it "prefers the model configured workflow namespace over the convention" do
+      object_node = FakeCall.new("object")
+      custom_entry = FakeEntry.new("file:///app/models/custom_post.rb", FakeLocation.new(1, 1, 6, 16))
+      rails_client = FakeRailsClient.new(
+        ["model_for_workflow_namespace", nil, nil, "Workflow::Post"] => {name: "CustomPost"}
+      )
+      response = []
+      listener = build_listener(
+        response: response,
+        node: object_node,
+        call_node: object_node,
+        index: FakeIndex.new(entries: {"Post" => [@entry], "CustomPost" => [custom_entry]}),
+        rails_client: rails_client
+      )
+
+      listener.on_call_node_enter(object_node)
+
+      assert_equal ["file:///app/models/custom_post.rb"], response.map(&:uri)
+    end
   end
 
   private
