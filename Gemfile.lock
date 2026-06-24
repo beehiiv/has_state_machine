@@ -118,7 +118,7 @@ GEM
     net-smtp (0.3.3)
       net-protocol
     nio4r (2.7.4)
-    nokogiri (1.19.4)
+    nokogiri (1.18.10)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
     parallel (1.28.0)
@@ -223,6 +223,7 @@ DEPENDENCIES
   has_state_machine!
   minitest (~> 5.1)
   mutex_m
+  nokogiri (< 1.19)
   parallel (< 2.0)
   pry
   pry-rails
@@ -230,4 +231,4 @@ DEPENDENCIES
   standard
 
 BUNDLED WITH
-   2.3.3
+   2.4.19
