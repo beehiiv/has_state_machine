@@ -28,6 +28,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "parallel", "< 2.0"
   spec.add_development_dependency "appraisal"
   spec.add_development_dependency "minitest", "~> 5.1"
+  spec.add_development_dependency "ruby-lsp", ">= 0.18"
+  spec.add_development_dependency "ruby-lsp-rails", ">= 0.3.17"
   spec.add_development_dependency "base64"
   spec.add_development_dependency "bigdecimal"
   spec.add_development_dependency "drb"
