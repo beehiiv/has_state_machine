@@ -90,7 +90,7 @@ module RubyLsp
         )
 
         response_name(result)
-      rescue StandardError
+      rescue
         nil
       end
 
@@ -106,7 +106,7 @@ module RubyLsp
 
         result = rails_client.association_target(model_name: model_name, association_name: association_name)
         response_name(result)
-      rescue StandardError
+      rescue
         nil
       end
 

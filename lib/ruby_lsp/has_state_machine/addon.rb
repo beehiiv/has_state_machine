@@ -43,7 +43,7 @@ module RubyLsp
 
       def register_rails_server_addon(outgoing_queue)
         register_rails_runner_client
-      rescue StandardError => error
+      rescue => error
         handle_rails_registration_error(outgoing_queue, error)
       end
 
