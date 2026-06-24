@@ -46,7 +46,7 @@ module RubyLsp
         return @resolved_model_name if defined?(@resolved_model_name)
         return @resolved_model_name = nil unless current_class_name
 
-        @resolved_model_name = model_name_from_rails(workflow_namespace) || convention_model_name
+        @resolved_model_name = convention_model_name || model_name_from_rails(workflow_namespace)
       end
 
       def convention_model_name
