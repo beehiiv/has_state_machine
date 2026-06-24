@@ -121,7 +121,7 @@ GEM
     nokogiri (1.19.4)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
-    parallel (2.1.0)
+    parallel (1.28.0)
     parser (3.3.11.1)
       ast (~> 2.4.1)
       racc
@@ -223,6 +223,7 @@ DEPENDENCIES
   has_state_machine!
   minitest (~> 5.1)
   mutex_m
+  parallel (< 2.0)
   pry
   pry-rails
   sqlite3 (>= 1.5, < 2.0)
