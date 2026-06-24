@@ -240,7 +240,7 @@ DEPENDENCIES
   pry
   pry-rails
   ruby-lsp (>= 0.18)
-  ruby-lsp-rails (>= 0.3)
+  ruby-lsp-rails (>= 0.3.17)
   sqlite3 (>= 1.5, < 2.0)
   standard
 
