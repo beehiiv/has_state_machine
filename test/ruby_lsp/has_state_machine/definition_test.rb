@@ -110,6 +110,48 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
       assert_equal ["file:///app/models/post.rb"], response.map(&:uri)
     end
 
+    it "does not ask Rails when the workflow resolves by convention" do
+      object_node = FakeCall.new("object")
+      rails_client = FakeRailsClient.new(
+        ["model_for_workflow_namespace", nil, nil, "Workflow::Post"] => {name: "CustomPost"}
+      )
+      response = []
+      listener = build_listener(
+        response: response,
+        node: object_node,
+        call_node: object_node,
+        index: FakeIndex.new(entries: {"Post" => [@entry]}),
+        rails_client: rails_client
+      )
+
+      listener.on_call_node_enter(object_node)
+
+      assert_equal ["file:///app/models/post.rb"], response.map(&:uri)
+      assert_empty rails_client.requests
+    end
+
+    it "resolves namespaced workflow models by convention" do
+      object_node = FakeCall.new("object")
+      email_entry = FakeEntry.new("file:///app/models/domain_configurations/email.rb", FakeLocation.new(1, 1, 6, 12))
+      rails_client = FakeRailsClient.new(
+        ["model_for_workflow_namespace", nil, nil, "Workflow::DomainConfigurations::Email"] => {name: "CustomEmail"}
+      )
+      response = []
+      listener = build_listener(
+        response: response,
+        node: object_node,
+        call_node: object_node,
+        nesting: ["Workflow", "DomainConfigurations::Email::MtaPending"],
+        index: FakeIndex.new(entries: {"DomainConfigurations::Email" => [email_entry]}),
+        rails_client: rails_client
+      )
+
+      listener.on_call_node_enter(object_node)
+
+      assert_equal ["file:///app/models/domain_configurations/email.rb"], response.map(&:uri)
+      assert_empty rails_client.requests
+    end
+
     it "pushes model method locations for object method calls" do
       object_node = FakeCall.new("object")
       method_node = FakeCall.new("published?", object_node)
@@ -171,7 +213,7 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
       assert_equal ["file:///app/models/custom_post.rb"], response.map(&:uri)
     end
 
-    it "prefers the model configured workflow namespace over the convention" do
+    it "prefers convention resolution before Rails workflow namespace lookup" do
       object_node = FakeCall.new("object")
       custom_entry = FakeEntry.new("file:///app/models/custom_post.rb", FakeLocation.new(1, 1, 6, 16))
       rails_client = FakeRailsClient.new(
@@ -188,7 +230,8 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
 
       listener.on_call_node_enter(object_node)
 
-      assert_equal ["file:///app/models/custom_post.rb"], response.map(&:uri)
+      assert_equal ["file:///app/models/post.rb"], response.map(&:uri)
+      assert_empty rails_client.requests
     end
   end
 
