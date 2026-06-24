@@ -20,10 +20,16 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency "rails", ">= 5.2"
 
-  spec.add_development_dependency "sqlite3", ">= 1.5"
+  spec.add_development_dependency "sqlite3", ">= 1.5", "< 2.0"
+  spec.add_development_dependency "nokogiri", "< 1.19"
   spec.add_development_dependency "pry"
   spec.add_development_dependency "pry-rails"
   spec.add_development_dependency "standard"
+  spec.add_development_dependency "parallel", "< 2.0"
   spec.add_development_dependency "appraisal"
   spec.add_development_dependency "minitest", "~> 5.1"
+  spec.add_development_dependency "base64"
+  spec.add_development_dependency "bigdecimal"
+  spec.add_development_dependency "drb"
+  spec.add_development_dependency "mutex_m"
 end
