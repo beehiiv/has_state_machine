@@ -7,6 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.2.0] - Jun 24, 2026
+f1b636c
+### Bug Fixes
+-  modernize local and ci tooling for test matrix reliability (#57)
+### Features
+-  add native add-on for ruby-lsp support in workflows (#58)
+----
 ## [1.1.0] - Jun  9, 2026
 762bfb0
 ### Features
