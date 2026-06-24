@@ -94,6 +94,7 @@ GEM
     json (2.20.0)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
+    logger (1.7.0)
     loofah (2.19.1)
       crass (~> 1.0.2)
       nokogiri (>= 1.5.9)
@@ -164,6 +165,10 @@ GEM
       zeitwerk (~> 2.5)
     rainbow (3.1.1)
     rake (13.0.3)
+    rbs (4.0.3)
+      logger
+      prism (>= 1.6.0)
+      tsort
     regexp_parser (2.12.0)
     reline (0.6.3)
       io-console (~> 0.5)
@@ -185,6 +190,12 @@ GEM
       lint_roller (~> 1.1)
       rubocop (>= 1.75.0, < 2.0)
       rubocop-ast (>= 1.47.1, < 2.0)
+    ruby-lsp (0.26.9)
+      language_server-protocol (~> 3.17.0)
+      prism (>= 1.2, < 2.0)
+      rbs (>= 3, < 5)
+    ruby-lsp-rails (0.4.8)
+      ruby-lsp (>= 0.26.0, < 0.27.0)
     ruby-progressbar (1.13.0)
     sqlite3 (1.7.3)
       mini_portile2 (~> 2.8.0)
@@ -202,6 +213,7 @@ GEM
       rubocop-performance (~> 1.26.0)
     thor (1.3.2)
     timeout (0.4.1)
+    tsort (0.2.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.2.0)
@@ -227,6 +239,8 @@ DEPENDENCIES
   parallel (< 2.0)
   pry
   pry-rails
+  ruby-lsp (>= 0.18)
+  ruby-lsp-rails (>= 0.3)
   sqlite3 (>= 1.5, < 2.0)
   standard
 
