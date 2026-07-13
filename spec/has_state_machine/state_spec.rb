@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "test_helper"
-
 ActiveRecord::Migration.create_table :swimmers, force: true do |t|
   t.string :status
 end
@@ -88,32 +86,32 @@ module Workflow
   end
 end
 
-class HasStateMachine::StateTest < ActiveSupport::TestCase
+RSpec.describe HasStateMachine::State do
   let(:object) { Swimmer.create }
   subject { Workflow::Swimmer::Diving.new(object) }
 
   describe "#possible_transitions" do
-    it { assert_equal %w[swimming floating tanning tubing lotioning], subject.possible_transitions }
+    it { expect(subject.possible_transitions).to eq(%w[swimming floating tanning tubing lotioning]) }
   end
 
   describe "#can_transition?" do
     describe "when the state is a string" do
       it "returns true if the transition is valid" do
-        assert subject.can_transition?("swimming")
+        expect(subject.can_transition?("swimming")).to be(true)
       end
 
       it "returns false if the transition is invalid" do
-        refute subject.can_transition?("running")
+        expect(subject.can_transition?("running")).to be(false)
       end
     end
 
     describe "when the state is a symbol" do
       it "returns true if the transition is valid" do
-        assert subject.can_transition?(:swimming)
+        expect(subject.can_transition?(:swimming)).to be(true)
       end
 
       it "returns false if the transition is invalid" do
-        refute subject.can_transition?(:running)
+        expect(subject.can_transition?(:running)).to be(false)
       end
     end
   end
@@ -121,119 +119,119 @@ class HasStateMachine::StateTest < ActiveSupport::TestCase
   describe "#transition_to" do
     describe "callbacks" do
       it "runs before_transition callbacks" do
-        refute object.before_transition_boolean
+        expect(object.before_transition_boolean).to be_falsey
         subject.transition_to(:swimming)
-        assert object.before_transition_boolean
+        expect(object.before_transition_boolean).to be(true)
       end
 
       it "runs after_transition callbacks" do
-        refute object.after_transition_boolean
+        expect(object.after_transition_boolean).to be_falsey
         subject.transition_to(:swimming)
-        assert object.after_transition_boolean
+        expect(object.after_transition_boolean).to be(true)
       end
 
       it "has access to the previous state" do
-        assert object.previous_state.nil?
+        expect(object.previous_state).to be_nil
         subject.transition_to(:swimming)
-        assert_equal "diving", object.previous_state
+        expect(object.previous_state).to eq("diving")
       end
 
       it "runs after_transition_commit callbacks" do
-        refute object.after_transition_commit_boolean
+        expect(object.after_transition_commit_boolean).to be_falsey
         subject.transition_to(:swimming)
-        assert object.after_transition_commit_boolean
+        expect(object.after_transition_commit_boolean).to be(true)
       end
 
       it "runs after_transition_commit after after_transition" do
         subject.transition_to(:swimming)
-        assert_equal %i[after_transition after_transition_commit], object.callback_sequence
+        expect(object.callback_sequence).to eq(%i[after_transition after_transition_commit])
       end
 
       it "has access to the previous state in after_transition_commit" do
-        assert object.previous_state_in_commit.nil?
+        expect(object.previous_state_in_commit).to be_nil
         subject.transition_to(:swimming)
-        assert_equal "diving", object.previous_state_in_commit
+        expect(object.previous_state_in_commit).to eq("diving")
       end
 
       it "does not run after_transition_commit on an invalid transition" do
-        refute subject.transition_to(:running)
-        refute object.after_transition_commit_boolean
+        expect(subject.transition_to(:running)).to be_falsey
+        expect(object.after_transition_commit_boolean).to be_falsey
       end
 
       it "does not run after_transition_commit when state validations fail" do
-        refute subject.transition_to(:floating)
-        refute object.after_transition_commit_boolean
+        expect(subject.transition_to(:floating)).to be_falsey
+        expect(object.after_transition_commit_boolean).to be_falsey
       end
     end
 
     it "updates the object's state attribute" do
-      assert_equal "diving", object.status
+      expect(object.status).to eq("diving")
 
       subject.transition_to(:swimming)
 
-      assert_equal "swimming", object.status
+      expect(object.status).to eq("swimming")
     end
 
     it "fails if transitioning to an invalid state" do
-      refute subject.transition_to(:running)
-      assert_equal "diving", object.status
+      expect(subject.transition_to(:running)).to be_falsey
+      expect(object.status).to eq("diving")
     end
 
     it "fails if state validations fail" do
-      refute subject.transition_to(:floating)
-      assert_equal "diving", object.status
+      expect(subject.transition_to(:floating)).to be_falsey
+      expect(object.status).to eq("diving")
     end
 
     it "can skip state validations" do
-      assert subject.transition_to(:floating, skip_validations: true)
-      assert_equal "floating", object.status
+      expect(subject.transition_to(:floating, skip_validations: true)).to be_truthy
+      expect(object.status).to eq("floating")
     end
 
     describe "transactional" do
       it "does not perform transition if after_transition rolls back" do
-        refute subject.transition_to(:tanning)
-        assert_equal "diving", object.reload.status
+        expect(subject.transition_to(:tanning)).to be_falsey
+        expect(object.reload.status).to eq("diving")
       end
 
       it "does not perform transition if before_transition rolls back" do
-        refute subject.transition_to(:tubing)
-        assert_equal "diving", object.reload.status
+        expect(subject.transition_to(:tubing)).to be_falsey
+        expect(object.reload.status).to eq("diving")
       end
 
       describe "with transients" do
         it "returns true if the transaction is successfull" do
-          assert_equal true, subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
-          assert_equal "lotioning", object.reload.status.to_s
+          expect(subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)).to be(true)
+          expect(object.reload.status.to_s).to eq("lotioning")
         end
 
         it "returns false if the transaction is rolled back in the after_transition" do
-          assert_equal false, subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: false)
-          assert_equal "diving", object.reload.status.to_s
+          expect(subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: false)).to be(false)
+          expect(object.reload.status.to_s).to eq("diving")
         end
 
         it "returns false if the transaction is rolled back in the before_transition" do
-          assert_equal false, subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)
-          assert_equal "diving", object.reload.status.to_s
+          expect(subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)).to be(false)
+          expect(object.reload.status.to_s).to eq("diving")
         end
 
         it "runs after_transition_commit when the transaction commits" do
           subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
-          assert object.after_transition_commit_boolean
+          expect(object.after_transition_commit_boolean).to be(true)
         end
 
         it "does not run after_transition_commit when rolled back in the after_transition" do
           subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: false)
-          refute object.after_transition_commit_boolean
+          expect(object.after_transition_commit_boolean).to be_falsey
         end
 
         it "does not run after_transition_commit when rolled back in the before_transition" do
           subject.transition_to(:lotioning, needs_lotion_before: false, needs_lotion_after: true)
-          refute object.after_transition_commit_boolean
+          expect(object.after_transition_commit_boolean).to be_falsey
         end
 
         it "has access to the previous state in after_transition_commit" do
           subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
-          assert_equal "diving", object.previous_state_in_commit
+          expect(object.previous_state_in_commit).to eq("diving")
         end
       end
     end

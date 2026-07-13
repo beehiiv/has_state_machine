@@ -1,0 +1,28 @@
+inherit_from:
+  - ./.standardrb_base.yml
+
+plugins:
+  - rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 3.1
+  SuggestExtensions: false
+  NewCops: enable
+  Exclude:
+    - "bin/**/*"
+    - "gemfiles/**/*"
+    - "test/dummy/db/**/*"
+    - "test/dummy/tmp/**/*"
+    - "test/dummy/log/**/*"
+    - "vendor/**/*"
+    - "**/.bundle/**/*"
+
+Layout/EmptyLineAfterGuardClause:
+  Enabled: true
+
+Layout/LineLength:
+  Enabled: true
+  AllowCopDirectives: true
+  AllowedPatterns:
+    - '^\s*.*#' # Allow long comments
+    - '^\s*.*".*"\s*(,\s*|do\s*)?$' # Ignore long strings, optionally ending with a comma or 'do'
