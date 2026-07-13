@@ -7,22 +7,29 @@ module RubyLsp
     class Definition
       SERVER_ADDON_NAME = "has_state_machine"
 
-      def initialize(response_builder, _uri, node_context, dispatcher, index: nil, rails_client: nil)
+      def initialize(response_builder, _uri, node_context, dispatcher, index: nil, rails_client: nil,
+        model_name_cache: nil)
         @response_builder = response_builder
         @node_context = node_context
         @index = index
         @rails_client = rails_client
+        @model_name_cache = model_name_cache
 
         dispatcher.register(self, :on_call_node_enter)
       end
 
       def on_call_node_enter(node)
         return unless current_target?(node)
-        return unless resolved_model_name
 
+        # Check the node shape first: resolving the model name may require a
+        # round-trip to the Rails runner, so only pay it for `object` calls.
         if object_call?(node)
+          return unless resolved_model_name
+
           push_entries(constant_entries(resolved_model_name))
         elsif object_method_call?(node)
+          return unless resolved_model_name
+
           method_name = message(node)
           entries = method_entries(resolved_model_name, method_name)
           entries = association_entries(resolved_model_name, method_name) if entries.empty?
@@ -33,7 +40,7 @@ module RubyLsp
 
       private
 
-      attr_reader :index, :node_context, :rails_client, :response_builder
+      attr_reader :index, :model_name_cache, :node_context, :rails_client, :response_builder
 
       def current_target?(node)
         target = node_context.node if node_context.respond_to?(:node)
@@ -79,6 +86,18 @@ module RubyLsp
       def model_name_from_rails(workflow_namespace)
         return unless workflow_namespace && rails_client
 
+        # Cache hits and misses for the life of the LSP process; the set of
+        # models rarely changes mid-session. Failures raise past the cache
+        # write, so a slow-to-boot Rails runner can succeed on a later request.
+        cache = model_name_cache.to_h
+        cache.fetch(workflow_namespace) do
+          cache[workflow_namespace] = request_model_name(workflow_namespace)
+        end
+      rescue
+        nil
+      end
+
+      def request_model_name(workflow_namespace)
         result = rails_client.delegate_request(
           server_addon_name: SERVER_ADDON_NAME,
           request_name: "model_for_workflow_namespace",
@@ -86,8 +105,6 @@ module RubyLsp
         )
 
         response_name(result)
-      rescue
-        nil
       end
 
       def association_entries(model_name, association_name)
