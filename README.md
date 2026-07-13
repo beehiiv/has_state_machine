@@ -98,8 +98,10 @@ module Workflow
     end
 
     # after_transition_commit runs only once the transition has been
-    # committed: after the record is saved for normal transitions, and
-    # outside the transaction for transactional transitions (see below).
+    # committed to the database: after the OUTERMOST database transaction
+    # commits, or immediately after the transition when no transaction is
+    # open. It never runs if the transition or a surrounding transaction
+    # rolls back. (Requires Rails 7.2+; see Advanced Usage below.)
     after_transition_commit do
       MyJob.perform_later(object)
     end
@@ -231,6 +233,20 @@ module Workflow
   end
 end
 ```
+
+#### `after_transition_commit` Semantics
+
+`after_transition_commit` callbacks run after the outermost database transaction commits. In detail:
+
+- If no transaction is open when `transition_to` is called, they run immediately after the transition commits.
+- If the transition happens inside an open transaction — an app-level `ActiveRecord::Base.transaction`, or a nested transition triggered from another state's `before_transition`/`after_transition` — they are deferred until that outermost transaction commits.
+- They never run if the transition fails, if `rollback_transition` is raised, or if a surrounding transaction rolls back after the transition. Multiple transitions inside one transaction each fire their callbacks after commit, in transition order.
+
+This makes `after_transition_commit` the safe place to enqueue background jobs, call external APIs, etc.: the work only happens once the new state is actually visible to other database connections.
+
+**Note on Rails versions:** deferral to an outer transaction requires Rails 7.2+. On older Rails versions the callbacks fire as soon as the transition itself completes, which may be inside an uncommitted outer transaction.
+
+**Footgun: `ActiveRecord.after_all_transactions_commit`** does not work as a substitute inside `before_transition`/`after_transition`. Rails skips non-joinable transactions when deciding whether any transaction is open, and transactional transitions run inside the gem's own non-joinable transaction — so the block yields *immediately*, while the transition is still uncommitted. Use `after_transition_commit` instead.
 
 #### Transient Transition Variables
 
