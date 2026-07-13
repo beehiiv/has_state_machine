@@ -28,6 +28,7 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up tools
         uses: jdx/mise-action@v4
@@ -55,13 +56,7 @@ jobs:
             exit 1
           fi
 
-          cat > lib/has_state_machine/version.rb <<EOF
-          # frozen_string_literal: true
-
-          module HasStateMachine
-            VERSION = "${VERSION}"
-          end
-          EOF
+          .github/scripts/write-version.sh "${VERSION}"
 
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
           echo "Publishing has_state_machine ${VERSION} from ${RELEASE_TAG}"
@@ -80,6 +75,7 @@ jobs:
       - name: Sync version bump to main
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -88,14 +84,7 @@ jobs:
           git fetch origin main
           git checkout -B main origin/main
 
-          cat > lib/has_state_machine/version.rb <<EOF
-          # frozen_string_literal: true
-
-          module HasStateMachine
-            VERSION = "${VERSION}"
-          end
-          EOF
-
+          .github/scripts/write-version.sh "${VERSION}"
           bundle exec rake changelog:refresh
 
           git add lib/has_state_machine/version.rb CHANGELOG.md
@@ -105,4 +94,16 @@ jobs:
           fi
 
           git commit -m "Bump version to ${VERSION}"
-          git push origin main
+
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          for attempt in 1 2 3; do
+            if git push origin main; then
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}); refetching and rebasing"
+            git fetch origin main
+            git rebase origin/main
+          done
+          echo "Failed to push version bump to main after retries" >&2
+          exit 1

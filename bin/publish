@@ -84,9 +84,9 @@ new_version = current_version.join(".")
 tag = "v#{new_version}"
 
 printf "\nCreate GitHub Release #{tag} (#{RELEASE_TYPE}) and publish to RubyGems? [Y/n]: "
-prompt = $stdin.gets.chomp
+prompt = $stdin.gets.to_s.strip
 
-if prompt == "Y"
+if prompt.empty? || prompt.match?(/\A(y|yes)\z/i)
   puts "--- Creating GitHub Release #{tag} ---"
   if system("gh", "release", "create", tag, "--generate-notes", "--title", tag, "--target", "main")
     puts "Release #{tag} created. The Release workflow will set the gem version, publish to RubyGems.org, and sync main."
@@ -95,7 +95,7 @@ if prompt == "Y"
 
       Failed to create the GitHub Release. Create it manually to publish:
 
-        gh release create #{tag} --generate-notes --target main
+        gh release create #{tag} --generate-notes --title #{tag} --target main
     MSG
   end
 else
