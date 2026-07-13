@@ -132,7 +132,7 @@ RSpec.describe HasStateMachine::StateHelpers do
   describe "generated scopes" do
     it { expect(Mountain.foo).to be_a(ActiveRecord::Relation) }
     it { expect(Mountain.bar).to be_a(ActiveRecord::Relation) }
-    it { expect(Mountain.foo).to be_a(ActiveRecord::Relation) }
+    it { expect(Mountain.baz).to be_a(ActiveRecord::Relation) }
 
     it "works correctly with joins" do
       foo_mountain = Mountain.create(status: "foo")

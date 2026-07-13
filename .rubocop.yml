@@ -24,5 +24,5 @@ Layout/LineLength:
   Enabled: true
   AllowCopDirectives: true
   AllowedPatterns:
-    - '^\s*.*#' # Allow long comments
+    - '^\s*#' # Allow long comments
     - '^\s*.*".*"\s*(,\s*|do\s*)?$' # Ignore long strings, optionally ending with a comma or 'do'
