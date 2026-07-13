@@ -10,7 +10,9 @@ class String
   #
   # @example
   #   "some random string".transition_to("draft") #=> false
-  def transition_to(_desired_state)
+  # rubocop:disable Naming/PredicateMethod -- mirrors HasStateMachine::State#transition_to API
+  def transition_to(_desired_state, **_options)
     false
   end
+  # rubocop:enable Naming/PredicateMethod
 end

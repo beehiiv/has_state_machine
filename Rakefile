@@ -17,11 +17,11 @@ namespace :test do
 end
 
 task :test do
-  sh "bin/test"
+  sh "bin/rspec"
 end
 
 task :lint do
-  sh "bin/standardrb --no-fix"
+  sh "bin/rubocop --no-server"
 end
 
 namespace :changelog do

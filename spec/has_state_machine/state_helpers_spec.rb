@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "test_helper"
-
 ActiveRecord::Migration.create_table :mountains, force: true do |t|
   t.string :status
 end
@@ -65,46 +63,46 @@ module Workflow
   end
 end
 
-class HasStateMachine::StateHelpersTest < ActiveSupport::TestCase
+RSpec.describe HasStateMachine::StateHelpers do
   subject { Mountain.new }
 
   describe "delegated methods" do
-    it { assert subject.respond_to? :state_attribute }
-    it { assert subject.respond_to? :state_validations_on_object? }
-    it { assert subject.respond_to? :workflow_namespace }
-    it { assert subject.respond_to? :workflow_states }
+    it { expect(subject).to respond_to(:state_attribute) }
+    it { expect(subject).to respond_to(:state_validations_on_object?) }
+    it { expect(subject).to respond_to(:workflow_namespace) }
+    it { expect(subject).to respond_to(:workflow_states) }
   end
 
   it "defaults instance to initial state" do
-    assert_equal "foo", subject.status
+    expect(subject.status).to eq("foo")
   end
 
   describe "validations" do
     it "is valid if state attribute is a valid state" do
       subject.status = "foo"
-      assert subject.valid?
+      expect(subject).to be_valid
     end
 
     it "is invalid if state attribute is an invalid state" do
       subject.status = "random"
-      refute subject.valid?
+      expect(subject).not_to be_valid
     end
 
     it "is invalid if state does not have class defined" do
       subject.status = "bar"
-      refute subject.valid?
+      expect(subject).not_to be_valid
     end
 
     it "is invalid if state validations do not pass" do
       subject.status = "baz"
-      refute subject.valid?
+      expect(subject).not_to be_valid
     end
 
     it "ignores state validations if accessor is set" do
       subject.status = "baz"
       subject.skip_state_validations = true
 
-      assert subject.valid?
+      expect(subject).to be_valid
     end
 
     describe "object also contains errors" do
@@ -112,29 +110,29 @@ class HasStateMachine::StateHelpersTest < ActiveSupport::TestCase
 
       it "does not remove already existing errors from the object if state also has errors" do
         subject.status = "baz"
-        refute subject.valid?
+        expect(subject).not_to be_valid
 
-        assert subject.errors.to_a.length == 2
+        expect(subject.errors.to_a.length).to eq(2)
       end
     end
   end
 
   describe "state attribute method" do
-    it "it returns an instance of HasStateMachine::State" do
-      assert_kind_of HasStateMachine::State, subject.status
+    it "returns an instance of HasStateMachine::State" do
+      expect(subject.status).to be_a(HasStateMachine::State)
     end
   end
 
   describe "generated predicate methods" do
-    it { assert subject.foo? }
-    it { refute subject.bar? }
-    it { refute subject.baz? }
+    it { expect(subject).to be_foo }
+    it { expect(subject).not_to be_bar }
+    it { expect(subject).not_to be_baz }
   end
 
   describe "generated scopes" do
-    it { assert_kind_of ActiveRecord::Relation, Mountain.foo }
-    it { assert_kind_of ActiveRecord::Relation, Mountain.bar }
-    it { assert_kind_of ActiveRecord::Relation, Mountain.foo }
+    it { expect(Mountain.foo).to be_a(ActiveRecord::Relation) }
+    it { expect(Mountain.bar).to be_a(ActiveRecord::Relation) }
+    it { expect(Mountain.baz).to be_a(ActiveRecord::Relation) }
 
     it "works correctly with joins" do
       foo_mountain = Mountain.create(status: "foo")
@@ -142,7 +140,7 @@ class HasStateMachine::StateHelpersTest < ActiveSupport::TestCase
       Tree.create(mountain: foo_mountain, status: "foo")
       Tree.create(mountain: bar_mountain, status: "foo")
 
-      assert_equal [foo_mountain], Mountain.foo.joins(:trees).merge(Tree.foo).to_a
+      expect(Mountain.foo.joins(:trees).merge(Tree.foo).to_a).to eq([foo_mountain])
     end
   end
 end

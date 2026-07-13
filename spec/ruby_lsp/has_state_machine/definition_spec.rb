@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "test_helper"
 require "ruby_lsp/has_state_machine/definition"
 
 module RubyLsp
@@ -40,7 +39,7 @@ module RubyLsp
   end
 end
 
-class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
+module RubyLspHasStateMachineDefinitionSpec
   FakeCall = Struct.new(:message, :receiver)
   FakeNodeContext = Struct.new(:node, :call_node, :nesting)
   FakeEntry = Struct.new(:uri, :location)
@@ -81,7 +80,13 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
 
     def delegate_request(**params)
       @requests << params
-      @delegate_responses[[params.fetch(:request_name), params[:model_name], params[:association_name], params[:workflow_namespace]]]
+      key = [
+        params.fetch(:request_name),
+        params[:model_name],
+        params[:association_name],
+        params[:workflow_namespace]
+      ]
+      @delegate_responses[key]
     end
 
     def association_target(model_name:, association_name:)
@@ -89,71 +94,72 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
       @association_responses[[model_name, association_name]]
     end
   end
+end
 
-  def setup
-    @entry = FakeEntry.new("file:///app/models/post.rb", FakeLocation.new(3, 3, 6, 10))
-  end
+RSpec.describe RubyLsp::HasStateMachine::Definition do
+  let(:fakes) { RubyLspHasStateMachineDefinitionSpec }
+  let(:entry) { fakes::FakeEntry.new("file:///app/models/post.rb", fakes::FakeLocation.new(3, 3, 6, 10)) }
 
   describe "#on_call_node_enter" do
     it "pushes the model location for object calls" do
-      object_node = FakeCall.new("object")
+      object_node = fakes::FakeCall.new("object")
       response = []
       listener = build_listener(
         response: response,
         node: object_node,
         call_node: object_node,
-        index: FakeIndex.new(entries: {"Post" => [@entry]})
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry]})
       )
 
       listener.on_call_node_enter(object_node)
 
-      assert_equal ["file:///app/models/post.rb"], response.map(&:uri)
+      expect(response.map(&:uri)).to eq(["file:///app/models/post.rb"])
     end
 
     it "pushes model method locations for object method calls" do
-      object_node = FakeCall.new("object")
-      method_node = FakeCall.new("published?", object_node)
-      method_entry = FakeEntry.new("file:///app/models/post.rb", FakeLocation.new(7, 7, 6, 16))
+      object_node = fakes::FakeCall.new("object")
+      method_node = fakes::FakeCall.new("published?", object_node)
+      method_entry = fakes::FakeEntry.new("file:///app/models/post.rb", fakes::FakeLocation.new(7, 7, 6, 16))
       response = []
       listener = build_listener(
         response: response,
         node: method_node,
         call_node: method_node,
-        index: FakeIndex.new(
-          entries: {"Post" => [@entry]},
+        index: fakes::FakeIndex.new(
+          entries: {"Post" => [entry]},
           methods: {["Post", "published?"] => [method_entry]}
         )
       )
 
       listener.on_call_node_enter(method_node)
 
-      assert_equal ["file:///app/models/post.rb"], response.map(&:uri)
-      assert_equal 6, response.first.range.start.line
+      expect(response.map(&:uri)).to eq(["file:///app/models/post.rb"])
+      expect(response.first.range.start.line).to eq(6)
     end
 
     it "uses Rails associations when the index does not resolve the method" do
-      object_node = FakeCall.new("object")
-      method_node = FakeCall.new("author", object_node)
-      author_entry = FakeEntry.new("file:///app/models/author.rb", FakeLocation.new(1, 1, 6, 12))
-      rails_client = FakeRailsClient.new({}, ["Post", "author"] => {name: "Author"})
+      object_node = fakes::FakeCall.new("object")
+      method_node = fakes::FakeCall.new("author", object_node)
+      author_entry = fakes::FakeEntry.new("file:///app/models/author.rb", fakes::FakeLocation.new(1, 1, 6, 12))
+      rails_client = fakes::FakeRailsClient.new({}, ["Post", "author"] => {name: "Author"})
       response = []
       listener = build_listener(
         response: response,
         node: method_node,
         call_node: method_node,
-        index: FakeIndex.new(entries: {"Post" => [@entry], "Author" => [author_entry]}),
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry], "Author" => [author_entry]}),
         rails_client: rails_client
       )
 
       listener.on_call_node_enter(method_node)
 
-      assert_equal ["file:///app/models/author.rb"], response.map(&:uri)
+      expect(response.map(&:uri)).to eq(["file:///app/models/author.rb"])
     end
 
     it "asks Rails for custom workflow namespaces" do
-      object_node = FakeCall.new("object")
-      custom_entry = FakeEntry.new("file:///app/models/custom_post.rb", FakeLocation.new(1, 1, 6, 16))
-      rails_client = FakeRailsClient.new(
+      object_node = fakes::FakeCall.new("object")
+      custom_entry = fakes::FakeEntry.new("file:///app/models/custom_post.rb", fakes::FakeLocation.new(1, 1, 6, 16))
+      rails_client = fakes::FakeRailsClient.new(
         ["model_for_workflow_namespace", nil, nil, "Publishing::Post"] => {name: "CustomPost"}
       )
       response = []
@@ -162,19 +168,19 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
         node: object_node,
         call_node: object_node,
         nesting: ["Publishing", "Post::Draft"],
-        index: FakeIndex.new(entries: {"CustomPost" => [custom_entry]}),
+        index: fakes::FakeIndex.new(entries: {"CustomPost" => [custom_entry]}),
         rails_client: rails_client
       )
 
       listener.on_call_node_enter(object_node)
 
-      assert_equal ["file:///app/models/custom_post.rb"], response.map(&:uri)
+      expect(response.map(&:uri)).to eq(["file:///app/models/custom_post.rb"])
     end
 
     it "prefers the model configured workflow namespace over the convention" do
-      object_node = FakeCall.new("object")
-      custom_entry = FakeEntry.new("file:///app/models/custom_post.rb", FakeLocation.new(1, 1, 6, 16))
-      rails_client = FakeRailsClient.new(
+      object_node = fakes::FakeCall.new("object")
+      custom_entry = fakes::FakeEntry.new("file:///app/models/custom_post.rb", fakes::FakeLocation.new(1, 1, 6, 16))
+      rails_client = fakes::FakeRailsClient.new(
         ["model_for_workflow_namespace", nil, nil, "Workflow::Post"] => {name: "CustomPost"}
       )
       response = []
@@ -182,23 +188,21 @@ class RubyLsp::HasStateMachine::DefinitionTest < ActiveSupport::TestCase
         response: response,
         node: object_node,
         call_node: object_node,
-        index: FakeIndex.new(entries: {"Post" => [@entry], "CustomPost" => [custom_entry]}),
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry], "CustomPost" => [custom_entry]}),
         rails_client: rails_client
       )
 
       listener.on_call_node_enter(object_node)
 
-      assert_equal ["file:///app/models/custom_post.rb"], response.map(&:uri)
+      expect(response.map(&:uri)).to eq(["file:///app/models/custom_post.rb"])
     end
   end
 
-  private
-
   def build_listener(response:, node:, call_node:, index:, rails_client: nil, nesting: ["Workflow", "Post::Draft"])
-    dispatcher = FakeDispatcher.new
-    node_context = FakeNodeContext.new(node, call_node, nesting)
+    dispatcher = RubyLspHasStateMachineDefinitionSpec::FakeDispatcher.new
+    node_context = RubyLspHasStateMachineDefinitionSpec::FakeNodeContext.new(node, call_node, nesting)
 
-    RubyLsp::HasStateMachine::Definition.new(
+    described_class.new(
       response,
       nil,
       node_context,

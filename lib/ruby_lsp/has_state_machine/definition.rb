@@ -154,6 +154,7 @@ module RubyLsp
 
       def entry_location(entry)
         return entry.location if entry.respond_to?(:location)
+
         entry.name_location if entry.respond_to?(:name_location)
       end
 

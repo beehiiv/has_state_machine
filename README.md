@@ -1,7 +1,7 @@
 # HasStateMachine
 
 [![CI](https://github.com/beehiiv/has_state_machine/actions/workflows/ci.yml/badge.svg)](https://github.com/beehiiv/has_state_machine/actions/workflows/ci.yml)
-[![Ruby Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://github.com/testdouble/standard)
+[![Ruby Style Guide](https://img.shields.io/badge/code_style-rubocop-brightgreen.svg)](https://github.com/rubocop/rubocop)
 
 HasStateMachine uses ruby classes to make creating a finite state machine for your ActiveRecord models a breeze.
 
