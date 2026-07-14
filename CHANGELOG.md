@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.2.1] - Jul 13, 2026
+357be9a
+### Bug Fixes
+-  defer after_transition_commit callbacks until the outermost transaction commits (#64)
+----
 ## [1.2.0] - Jun 24, 2026
 f1b636c
 ### Bug Fixes
