@@ -16,8 +16,8 @@ module HasStateMachine
     define_model_callbacks :transition, only: %i[before after]
 
     ##
-    # Defines the after_transition_commit callback. It runs only after a
-    # transition has committed.
+    # Defines the after_transition_commit callback, which runs once a
+    # successful transition is committed to the database.
     define_model_callbacks :transition_commit, only: %i[after]
 
     ##
@@ -63,7 +63,7 @@ module HasStateMachine
     # @return [Boolean] whether or not the transition took place
     def transition_to(desired_state, **options)
       transitioned = false
-      options = options.transform_keys(&:to_sym)
+      options = options.symbolize_keys
       desired_state_instance = state_instance(desired_state, options)
 
       with_transition_options(options) do
@@ -78,44 +78,65 @@ module HasStateMachine
 
       transitioned
     ensure
-      (desired_state_instance&.errors || []).each do |error|
+      desired_state_instance&.errors&.each do |error|
         object.errors.add(error.attribute, error.type)
       end
     end
 
     ##
     # Makes the actual transition from one state to the next and
-    # runs the before and after transition callbacks. The
-    # after_transition_commit callbacks run after the update completes
-    # and only when it succeeds.
-    def perform_transition!
-      run_callbacks :transition_commit do
-        run_callbacks :transition do
-          object.update("#{object.state_attribute}": state)
-        end
+    # runs the before and after transition callbacks.
+    #
+    # @return [Boolean] whether or not the transition succeeded
+    def perform_transition! # rubocop:disable Naming/PredicateMethod -- public API
+      transitioned = run_callbacks :transition do
+        object.update("#{object.state_attribute}": state)
       end
+      return false unless transitioned
+
+      @previous_state = previous_state
+      enqueue_transition_commit_callbacks
+      true
     end
 
     ##
-    # Makes the actual transition from one state to the next and
-    # runs the before and after transition callbacks in a transaction
-    # to allow for roll backs. The after_transition_commit callbacks run
-    # outside the transaction and only when it commits (not on rollback).
-    def perform_transactional_transition!
-      run_callbacks :transition_commit do
-        ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
-          run_callbacks :transition do
-            rollback_transition unless object.update("#{object.state_attribute}": state)
-          end
+    # Same as {#perform_transition!}, but wrapped in a transaction so
+    # callbacks can roll the transition back.
+    #
+    # @return [Boolean] whether or not the transition succeeded
+    def perform_transactional_transition! # rubocop:disable Naming/PredicateMethod -- public API
+      ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+        run_callbacks :transition do
+          rollback_transition unless object.update("#{object.state_attribute}": state)
         end
-
-        @previous_state = previous_state
-
-        object.reload.public_send(object.state_attribute) == state
       end
+
+      @previous_state = previous_state
+      return false unless object.reload.public_send(object.state_attribute) == state
+
+      enqueue_transition_commit_callbacks
+      true
     end
 
     private
+
+    ##
+    # Runs the after_transition_commit callbacks once the outermost open
+    # transaction commits, discarding them on rollback.
+    #
+    # @note Registers on the connection's current transaction because
+    #   +ActiveRecord.after_all_transactions_commit+ ignores non-joinable
+    #   transactions (like the gem's own) and would fire immediately.
+    # @return [void]
+    def enqueue_transition_commit_callbacks
+      current_transaction = object.class.connection.current_transaction
+
+      # Rails < 7.2 has no Transaction#after_commit, so callbacks fire
+      # immediately with no deferral. Drop this guard at Rails 7.2+.
+      return run_callbacks(:transition_commit) { true } unless current_transaction.respond_to?(:after_commit)
+
+      current_transaction.after_commit { run_callbacks(:transition_commit) { true } }
+    end
 
     def rollback_transition
       raise ActiveRecord::Rollback
