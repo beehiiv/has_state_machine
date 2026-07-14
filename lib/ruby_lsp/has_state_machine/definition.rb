@@ -84,7 +84,7 @@ module RubyLsp
       end
 
       def model_name_from_rails(workflow_namespace)
-        return unless workflow_namespace && rails_client
+        return unless workflow_namespace && rails_client_available?
 
         # Cache hits and misses for the life of the LSP process; the set of
         # models rarely changes mid-session. Failures raise past the cache
@@ -114,8 +114,17 @@ module RubyLsp
         constant_entries(association_model_name)
       end
 
+      # Delegating a request to a disconnected client (ruby-lsp-rails NullClient)
+      # never produces a response, so read_response would block forever and the
+      # convention fallback would never run.
+      def rails_client_available?
+        return false unless rails_client
+
+        !rails_client.respond_to?(:connected?) || rails_client.connected?
+      end
+
       def association_model_name(model_name, association_name)
-        return unless rails_client&.respond_to?(:association_target)
+        return unless rails_client_available? && rails_client.respond_to?(:association_target)
 
         result = rails_client.association_target(model_name: model_name, association_name: association_name)
         response_name(result)

@@ -71,11 +71,18 @@ module RubyLspHasStateMachineDefinitionSpec
   class FakeRailsClient
     attr_reader :requests, :association_requests
 
+    attr_writer :connected
+
     def initialize(delegate_responses = {}, association_responses = {})
       @delegate_responses = delegate_responses
       @association_responses = association_responses
+      @connected = true
       @requests = []
       @association_requests = []
+    end
+
+    def connected?
+      @connected
     end
 
     def delegate_request(**params)
@@ -175,6 +182,41 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
       listener.on_call_node_enter(object_node)
 
       expect(response.map(&:uri)).to eq(["file:///app/models/custom_post.rb"])
+    end
+
+    it "falls back to the naming convention when the Rails client is disconnected" do
+      object_node = fakes::FakeCall.new("object")
+      rails_client = fakes::FakeRailsClient.new
+      rails_client.connected = false
+      response = []
+      listener = build_listener(
+        response: response,
+        node: object_node,
+        call_node: object_node,
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry]}),
+        rails_client: rails_client
+      )
+
+      listener.on_call_node_enter(object_node)
+
+      expect(rails_client.requests).to be_empty
+      expect(response.map(&:uri)).to eq(["file:///app/models/post.rb"])
+    end
+
+    it "resolves via convention when there is no Rails client" do
+      object_node = fakes::FakeCall.new("object")
+      response = []
+      listener = build_listener(
+        response: response,
+        node: object_node,
+        call_node: object_node,
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry]}),
+        rails_client: nil
+      )
+
+      listener.on_call_node_enter(object_node)
+
+      expect(response.map(&:uri)).to eq(["file:///app/models/post.rb"])
     end
 
     it "does not contact Rails for unrelated call nodes" do

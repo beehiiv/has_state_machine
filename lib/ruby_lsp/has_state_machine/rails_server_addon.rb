@@ -13,7 +13,7 @@ module RubyLsp
         with_request_error_handling(request) do
           case request
           when "model_for_workflow_namespace"
-            send_result(model_for_workflow_namespace(params.fetch("workflow_namespace")))
+            send_result(model_for_workflow_namespace(params[:workflow_namespace] || params.fetch("workflow_namespace")))
           else
             raise NotImplementedError, "Unknown request: #{request}"
           end
