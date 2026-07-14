@@ -23,10 +23,22 @@ module RubyLsp
       private
 
       def model_for_workflow_namespace(workflow_namespace)
-        model = models_by_workflow_namespace[workflow_namespace]
+        model = conventional_model_for(workflow_namespace) || models_by_workflow_namespace[workflow_namespace]
         return unless model
 
         {name: model.name}
+      end
+
+      ##
+      # Fast path: for the default "Workflow::<Model>" namespace, autoload just
+      # that one constant instead of eager loading the whole application. Only
+      # custom workflow_namespace configurations need the full scan below.
+      def conventional_model_for(workflow_namespace)
+        workflow_namespace = workflow_namespace.to_s
+        return unless workflow_namespace.start_with?("Workflow::")
+
+        model = workflow_namespace.delete_prefix("Workflow::").safe_constantize
+        model if model.try(:workflow_namespace) == workflow_namespace
       end
 
       def models_by_workflow_namespace
