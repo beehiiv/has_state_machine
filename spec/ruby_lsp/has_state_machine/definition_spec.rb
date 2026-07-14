@@ -177,6 +177,46 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
       expect(response.map(&:uri)).to eq(["file:///app/models/custom_post.rb"])
     end
 
+    it "does not contact Rails for unrelated call nodes" do
+      unrelated_node = fakes::FakeCall.new("some_helper")
+      rails_client = fakes::FakeRailsClient.new
+      listener = build_listener(
+        response: [],
+        node: unrelated_node,
+        call_node: unrelated_node,
+        index: fakes::FakeIndex.new,
+        rails_client: rails_client
+      )
+
+      listener.on_call_node_enter(unrelated_node)
+
+      expect(rails_client.requests).to be_empty
+    end
+
+    it "shares the model name cache across listeners" do
+      object_node = fakes::FakeCall.new("object")
+      rails_client = fakes::FakeRailsClient.new(
+        ["model_for_workflow_namespace", nil, nil, "Workflow::Post"] => {name: "Post"}
+      )
+      cache = {}
+      index = fakes::FakeIndex.new(entries: {"Post" => [entry]})
+
+      2.times do
+        listener = build_listener(
+          response: [],
+          node: object_node,
+          call_node: object_node,
+          index: index,
+          rails_client: rails_client,
+          model_name_cache: cache
+        )
+        listener.on_call_node_enter(object_node)
+      end
+
+      expect(rails_client.requests.length).to eq(1)
+      expect(cache).to eq("Workflow::Post" => "Post")
+    end
+
     it "prefers the model configured workflow namespace over the convention" do
       object_node = fakes::FakeCall.new("object")
       custom_entry = fakes::FakeEntry.new("file:///app/models/custom_post.rb", fakes::FakeLocation.new(1, 1, 6, 16))
@@ -198,7 +238,8 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
     end
   end
 
-  def build_listener(response:, node:, call_node:, index:, rails_client: nil, nesting: ["Workflow", "Post::Draft"])
+  def build_listener(response:, node:, call_node:, index:, rails_client: nil, model_name_cache: nil,
+    nesting: ["Workflow", "Post::Draft"])
     dispatcher = RubyLspHasStateMachineDefinitionSpec::FakeDispatcher.new
     node_context = RubyLspHasStateMachineDefinitionSpec::FakeNodeContext.new(node, call_node, nesting)
 
@@ -208,7 +249,8 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
       node_context,
       dispatcher,
       index: index,
-      rails_client: rails_client
+      rails_client: rails_client,
+      model_name_cache: model_name_cache
     )
   end
 end
