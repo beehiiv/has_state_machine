@@ -7,6 +7,10 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.2.2] - Jul 14, 2026
+3c14ef9
+
+----
 ## [1.2.1] - Jul 13, 2026
 357be9a
 ### Bug Fixes
