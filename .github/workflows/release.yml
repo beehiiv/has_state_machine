@@ -19,7 +19,7 @@ jobs:
       url: https://rubygems.org/gems/has_state_machine
 
     permissions:
-      contents: write
+      contents: read
       id-token: write
 
     steps:
@@ -72,10 +72,17 @@ jobs:
           mv has_state_machine-*.gem pkg/
           gem push pkg/*.gem
 
+      - name: Mint deploy-bot token
+        uses: actions/create-github-app-token@v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.DEPLOY_BOT_APP_ID }}
+          private-key: ${{ secrets.DEPLOY_BOT_APP_PRIVATE_KEY }}
+
       - name: Sync version bump to main
         env:
           VERSION: ${{ steps.version.outputs.version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -103,7 +110,9 @@ jobs:
             fi
             echo "Push rejected (attempt ${attempt}); refetching and rebasing"
             git fetch origin main
-            git rebase origin/main
+            # Autostash: changelog:refresh leaves Gemfile.lock dirty (bundler
+            # relocks the bumped gemspec version), which otherwise aborts rebase.
+            git rebase --autostash origin/main
           done
           echo "Failed to push version bump to main after retries" >&2
           exit 1

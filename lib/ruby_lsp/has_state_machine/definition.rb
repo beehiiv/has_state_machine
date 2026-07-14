@@ -7,6 +7,10 @@ module RubyLsp
     class Definition
       SERVER_ADDON_NAME = "has_state_machine"
 
+      # AR methods that return self, so `object.reload.foo` targets the model
+      # just like `object.foo`.
+      SELF_RETURNING_METHODS = ["reload"].freeze
+
       def initialize(response_builder, _uri, node_context, dispatcher, index: nil, rails_client: nil,
         model_name_cache: nil)
         @response_builder = response_builder
@@ -33,6 +37,7 @@ module RubyLsp
           method_name = message(node)
           entries = method_entries(resolved_model_name, method_name)
           entries = association_entries(resolved_model_name, method_name) if entries.empty?
+          entries = constant_entries(resolved_model_name) if entries.empty?
 
           push_entries(entries)
         end
@@ -84,7 +89,7 @@ module RubyLsp
       end
 
       def model_name_from_rails(workflow_namespace)
-        return unless workflow_namespace && rails_client
+        return unless workflow_namespace && rails_client_available?
 
         # Cache hits and misses for the life of the LSP process; the set of
         # models rarely changes mid-session. Failures raise past the cache
@@ -114,8 +119,17 @@ module RubyLsp
         constant_entries(association_model_name)
       end
 
+      # Delegating a request to a disconnected client (ruby-lsp-rails NullClient)
+      # never produces a response, so read_response would block forever and the
+      # convention fallback would never run.
+      def rails_client_available?
+        return false unless rails_client
+
+        !rails_client.respond_to?(:connected?) || rails_client.connected?
+      end
+
       def association_model_name(model_name, association_name)
-        return unless rails_client&.respond_to?(:association_target)
+        return unless rails_client_available? && rails_client.respond_to?(:association_target)
 
         result = rails_client.association_target(model_name: model_name, association_name: association_name)
         response_name(result)
@@ -189,7 +203,14 @@ module RubyLsp
       end
 
       def object_method_call?(node)
-        message(node) && object_call?(receiver(node))
+        message(node) && object_chain?(receiver(node))
+      end
+
+      def object_chain?(node)
+        return false unless node
+        return true if object_call?(node)
+
+        SELF_RETURNING_METHODS.include?(message(node)) && object_chain?(receiver(node))
       end
 
       def object_call?(node)

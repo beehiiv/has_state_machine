@@ -12,12 +12,25 @@ module RubyLsp
     class Addon < ::RubyLsp::Addon
       def activate(global_state, outgoing_queue)
         @global_state = global_state
+        @model_name_cache = {}
         @rails_client = register_rails_server_addon(outgoing_queue)
+
+        rails_status = if @rails_client
+          "registered"
+        else
+          "unavailable, using naming convention only"
+        end
+
+        log(
+          outgoing_queue,
+          "Activating Has State Machine Ruby LSP add-on v#{version} (Rails integration: #{rails_status})"
+        )
       end
 
       def deactivate
         @global_state = nil
         @rails_client = nil
+        @model_name_cache = nil
       end
 
       def name
@@ -35,7 +48,8 @@ module RubyLsp
           node_context,
           dispatcher,
           index: @global_state&.index,
-          rails_client: @rails_client
+          rails_client: @rails_client,
+          model_name_cache: @model_name_cache
         )
       end
 
@@ -53,6 +67,7 @@ module RubyLsp
 
         client = rails_addon.rails_runner_client
         return unless client.respond_to?(:register_server_addon)
+        return if client.respond_to?(:connected?) && !client.connected?
 
         client.register_server_addon(File.expand_path("rails_server_addon.rb", __dir__))
         client

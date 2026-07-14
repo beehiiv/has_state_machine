@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "ruby_lsp/ruby_lsp_rails/server"
+require "ruby_lsp/ruby_lsp_rails/server" unless defined?(::RubyLsp::Rails::ServerAddon)
 
 module RubyLsp
   module HasStateMachine
@@ -13,7 +13,7 @@ module RubyLsp
         with_request_error_handling(request) do
           case request
           when "model_for_workflow_namespace"
-            send_result(model_for_workflow_namespace(params.fetch("workflow_namespace")))
+            send_result(model_for_workflow_namespace(params[:workflow_namespace] || params.fetch("workflow_namespace")))
           else
             raise NotImplementedError, "Unknown request: #{request}"
           end
