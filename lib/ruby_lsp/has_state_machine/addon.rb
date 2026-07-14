@@ -15,9 +15,16 @@ module RubyLsp
         @model_name_cache = {}
         @rails_client = register_rails_server_addon(outgoing_queue)
 
-        rails_status = @rails_client ? "registered" : "unavailable, using naming convention only"
-        log(outgoing_queue,
-          "Activating Has State Machine Ruby LSP add-on v#{version} (Rails integration: #{rails_status})")
+        rails_status = if @rails_client
+          "registered"
+        else
+          "unavailable, using naming convention only"
+        end
+
+        log(
+          outgoing_queue,
+          "Activating Has State Machine Ruby LSP add-on v#{version} (Rails integration: #{rails_status})"
+        )
       end
 
       def deactivate

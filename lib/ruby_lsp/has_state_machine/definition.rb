@@ -7,6 +7,10 @@ module RubyLsp
     class Definition
       SERVER_ADDON_NAME = "has_state_machine"
 
+      # AR methods that return self, so `object.reload.foo` targets the model
+      # just like `object.foo`.
+      SELF_RETURNING_METHODS = ["reload"].freeze
+
       def initialize(response_builder, _uri, node_context, dispatcher, index: nil, rails_client: nil,
         model_name_cache: nil)
         @response_builder = response_builder
@@ -33,6 +37,7 @@ module RubyLsp
           method_name = message(node)
           entries = method_entries(resolved_model_name, method_name)
           entries = association_entries(resolved_model_name, method_name) if entries.empty?
+          entries = constant_entries(resolved_model_name) if entries.empty?
 
           push_entries(entries)
         end
@@ -198,7 +203,14 @@ module RubyLsp
       end
 
       def object_method_call?(node)
-        message(node) && object_call?(receiver(node))
+        message(node) && object_chain?(receiver(node))
+      end
+
+      def object_chain?(node)
+        return false unless node
+        return true if object_call?(node)
+
+        SELF_RETURNING_METHODS.include?(message(node)) && object_chain?(receiver(node))
       end
 
       def object_call?(node)

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "ruby_lsp/ruby_lsp_rails/server"
+require "ruby_lsp/ruby_lsp_rails/server" unless defined?(::RubyLsp::Rails::ServerAddon)
 
 module RubyLsp
   module HasStateMachine

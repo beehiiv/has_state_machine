@@ -184,6 +184,62 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
       expect(response.map(&:uri)).to eq(["file:///app/models/custom_post.rb"])
     end
 
+    it "falls back to the model class for column attribute methods with no definition" do
+      object_node = fakes::FakeCall.new("object")
+      method_node = fakes::FakeCall.new("completed_at", object_node)
+      response = []
+      listener = build_listener(
+        response: response,
+        node: method_node,
+        call_node: method_node,
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry]})
+      )
+
+      listener.on_call_node_enter(method_node)
+
+      expect(response.map(&:uri)).to eq(["file:///app/models/post.rb"])
+    end
+
+    it "resolves methods chained through reload" do
+      object_node = fakes::FakeCall.new("object")
+      reload_node = fakes::FakeCall.new("reload", object_node)
+      method_node = fakes::FakeCall.new("published?", reload_node)
+      method_entry = fakes::FakeEntry.new("file:///app/models/post.rb", fakes::FakeLocation.new(7, 7, 6, 16))
+      response = []
+      listener = build_listener(
+        response: response,
+        node: method_node,
+        call_node: method_node,
+        index: fakes::FakeIndex.new(
+          entries: {"Post" => [entry]},
+          methods: {["Post", "published?"] => [method_entry]}
+        )
+      )
+
+      listener.on_call_node_enter(method_node)
+
+      expect(response.map(&:uri)).to eq(["file:///app/models/post.rb"])
+      expect(response.first.range.start.line).to eq(6)
+    end
+
+    it "ignores methods chained through non-self-returning calls" do
+      object_node = fakes::FakeCall.new("object")
+      parent_node = fakes::FakeCall.new("parent", object_node)
+      method_node = fakes::FakeCall.new("published?", parent_node)
+      rails_client = fakes::FakeRailsClient.new
+      listener = build_listener(
+        response: [],
+        node: method_node,
+        call_node: method_node,
+        index: fakes::FakeIndex.new(entries: {"Post" => [entry]}),
+        rails_client: rails_client
+      )
+
+      listener.on_call_node_enter(method_node)
+
+      expect(rails_client.requests).to be_empty
+    end
+
     it "falls back to the naming convention when the Rails client is disconnected" do
       object_node = fakes::FakeCall.new("object")
       rails_client = fakes::FakeRailsClient.new
