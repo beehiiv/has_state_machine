@@ -29,10 +29,7 @@ module RubyLsp
         {name: model.name}
       end
 
-      ##
-      # Fast path: for the default "Workflow::<Model>" namespace, autoload just
-      # that one constant instead of eager loading the whole application. Only
-      # custom workflow_namespace configurations need the full scan below.
+      # Resolve conventional namespaces without eager-loading the application.
       def conventional_model_for(workflow_namespace)
         workflow_namespace = workflow_namespace.to_s
         return unless workflow_namespace.start_with?("Workflow::")
@@ -43,10 +40,25 @@ module RubyLsp
 
       def models_by_workflow_namespace
         @models_by_workflow_namespace ||= active_record_models.each_with_object({}) do |model, index|
-          next unless model.respond_to?(:workflow_namespace)
-
-          index[model.workflow_namespace] = model
+          workflow_namespaces_for(model).each { |namespace| index[namespace] = model }
         end
+      end
+
+      # Keep inherited namespaces mapped to the model that declared them.
+      def workflow_namespaces_for(model)
+        return [] if model.name.nil?
+        return Array(model.try(:workflow_namespace)) unless model.respond_to?(:state_machine_definitions)
+
+        model.state_machine_definitions.each_value.filter_map do |machine|
+          namespace = machine.workflow_namespace_for(model).to_s
+          namespace unless inherited_namespace?(model.superclass, machine, namespace)
+        end
+      end
+
+      def inherited_namespace?(parent, machine, namespace)
+        parent.respond_to?(:state_machine_definitions) &&
+          parent.state_machine_definitions.value?(machine) &&
+          machine.workflow_namespace_for(parent).to_s == namespace
       end
 
       def active_record_models
