@@ -28,6 +28,8 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rubocop-performance"
   spec.add_development_dependency "parallel", "< 2.0"
   spec.add_development_dependency "appraisal"
+  # Rails 6.1–7.2 pass quirks_mode, which JSON 3 removed.
+  spec.add_development_dependency "json", "< 3.0"
   spec.add_development_dependency "rspec-rails", ">= 6.1"
   spec.add_development_dependency "ruby-lsp", ">= 0.18"
   spec.add_development_dependency "ruby-lsp-rails", ">= 0.3.17"

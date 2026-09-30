@@ -292,6 +292,7 @@ DEPENDENCIES
   bigdecimal
   drb
   has_state_machine!
+  json (< 3.0)
   mutex_m
   nokogiri (< 1.19)
   parallel (< 2.0)
