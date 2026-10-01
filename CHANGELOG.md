@@ -7,6 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.3.0] - Oct  1, 2026
+de4385b
+### Bug Fixes
+- - A `pre ` option (accepting `true`, a string/symbol, or `false`/`nil`) controls the scope and predicate names for each machine, preventing collisions between machines that share state names.
+### Features
+-  add support for multiple state machines on a single model (#66)
+----
 ## [1.2.2] - Jul 14, 2026
 3c14ef9
 
