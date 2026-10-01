@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module HasStateMachine
-  # Shared model helpers and per-machine method generation.
   module StateHelpers
     extend ActiveSupport::Concern
 
@@ -58,10 +57,7 @@ module HasStateMachine
 
     class_methods do
       delegate :state_attribute, :state_validations_on_object?, to: :primary_state_machine_definition
-
-      def workflow_states
-        primary_state_machine_definition.states
-      end
+      delegate :states, to: :primary_state_machine_definition, prefix: :workflow
 
       def workflow_namespace
         primary_state_machine_definition.workflow_namespace_for(self)
@@ -92,7 +88,6 @@ module HasStateMachine
           end
         end
 
-        # Return the raw value when no state class exists.
         define_method attr do
           current_machine = state_machine_definition_for(attr)
           klass = state_class(current_machine)

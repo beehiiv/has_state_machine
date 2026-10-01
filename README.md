@@ -202,6 +202,59 @@ post.status.transition_to(:published, skip_validations: true)
 
 ### Advanced Usage
 
+#### Multiple State Machines
+
+Call `has_state_machine` once per state column to give a model independent workflows:
+
+```ruby
+class Post < ApplicationRecord
+  has_state_machine states: %i[draft published archived]
+  has_state_machine states: %i[available removing removed],
+    state_attribute: :deletion_state,
+    workflow_namespace: "Workflow::PostDeletion",
+    prefix: :deletion
+end
+
+post.status.transition_to(:published)
+post.deletion_state.transition_to(:removing)
+
+Post.deletion_removing # Scope on deletion_state
+post.deletion_removing? # Predicate on deletion_state
+```
+
+Each machine needs its own state column and workflow namespace, with state classes
+inheriting from `HasStateMachine::State`. Each column defaults to its machine's
+first state. Transitions update their own column, and model validations run the
+state validations of every machine unless disabled with
+`state_validations_on_object: false` or `skip_state_validations`.
+
+Use `prefix:` and/or `suffix:` to distinguish generated scopes and predicates:
+
+| Options for `deletion_state` | Scope | Predicate |
+| --- | --- | --- |
+| `prefix: true` | `deletion_state_removing` | `deletion_state_removing?` |
+| `prefix: :deletion` | `deletion_removing` | `deletion_removing?` |
+| `suffix: true` | `removing_deletion_state` | `removing_deletion_state?` |
+| `suffix: "deletion"` | `removing_deletion` | `removing_deletion?` |
+| `prefix: :deletion, suffix: :workflow` | `deletion_removing_workflow` | `deletion_removing_workflow?` |
+
+Both options accept `true` (use the state attribute), a string or symbol (use a
+custom name), or `false`/`nil` (omit the affix). `scopes: false` disables scopes
+while retaining predicates. Additional machines raise `ArgumentError` if their
+generated helpers collide with existing methods or their namespace matches
+another machine's. An omitted or blank namespace defaults to
+`Workflow::<ModelClass>`.
+
+The first machine remains the primary machine for `workflow_states`,
+`state_attribute`, `workflow_namespace`, and `state_validations_on_object?`.
+Subclasses inherit all machine definitions and may add their own.
+
+For 1.x compatibility, redeclaring the same state attribute replaces its
+configuration in place. This supports concern and subclass overrides of namespace
+or state-validation settings. It does **not** regenerate the original default,
+inclusion validation, scopes, or predicates, so keep the states and helper-naming
+options consistent across redeclarations.
+
 #### Transactional Transitions
 
 There may be a situation where you want to manually rollback a state change in one of the provided transition callbacks. To do this, add the `transactional: true` option to the `state_options` declaration. This results in the transition being wrapped in a transaction. You can then use the `rollback_transition` method in your callback when you want to trigger a rollback of the transaction. This will allow you to prevent the transition from persisting if something further down the line fails.

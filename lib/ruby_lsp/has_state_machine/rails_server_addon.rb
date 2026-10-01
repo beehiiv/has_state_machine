@@ -47,17 +47,18 @@ module RubyLsp
       # Keep inherited namespaces mapped to the model that declared them.
       def workflow_namespaces_for(model)
         return [] if model.name.nil?
-        return Array(model.try(:workflow_namespace)) unless model.respond_to?(:state_machine_definitions)
 
-        model.state_machine_definitions.each_value.filter_map do |machine|
+        definitions = model.try(:state_machine_definitions)
+        return Array(model.try(:workflow_namespace)) unless definitions
+
+        definitions.each_value.filter_map do |machine|
           namespace = machine.workflow_namespace_for(model).to_s
           namespace unless inherited_namespace?(model.superclass, machine, namespace)
         end
       end
 
       def inherited_namespace?(parent, machine, namespace)
-        parent.respond_to?(:state_machine_definitions) &&
-          parent.state_machine_definitions.value?(machine) &&
+        parent.try(:state_machine_definitions)&.value?(machine) &&
           machine.workflow_namespace_for(parent).to_s == namespace
       end
 

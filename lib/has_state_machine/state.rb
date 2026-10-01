@@ -33,17 +33,26 @@ module HasStateMachine
     #
     # @return [HasStateMachine::Machine, nil]
     def state_machine
-      @state_machine ||= lookup_state_machine
+      return @state_machine if @state_machine
+
+      model_class = object.class
+      definitions = model_class.try(:state_machine_definitions)
+      return unless definitions
+
+      machines = definitions.each_value
+      namespace = self.class.name&.deconstantize
+
+      @state_machine = machines.find do |machine|
+        machine.workflow_namespace_for(model_class).to_s == namespace
+      end || machines.first
     end
 
-    # Column this state transitions.
     # @return [Symbol]
     def state_attribute
       state_machine&.state_attribute || object.state_attribute
     end
 
     # @api private
-    # @return [self]
     def bind_state_machine(machine)
       @state_machine = machine
       self
@@ -87,8 +96,9 @@ module HasStateMachine
     # @return [Boolean] whether the transition succeeded
     def perform_transition! # rubocop:disable Naming/PredicateMethod -- public API
       transitioned = run_callbacks :transition do
-        persist_transition
+        update_state_attribute
       end
+
       return false unless transitioned
 
       enqueue_transition_commit_callbacks
@@ -100,7 +110,7 @@ module HasStateMachine
     def perform_transactional_transition! # rubocop:disable Naming/PredicateMethod -- public API
       ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
         run_callbacks :transition do
-          rollback_transition unless persist_transition
+          rollback_transition unless update_state_attribute
         end
       end
 
@@ -113,7 +123,7 @@ module HasStateMachine
     private
 
     # Capture the previous state before transition callbacks can save the model again.
-    def persist_transition # rubocop:disable Naming/PredicateMethod -- returns update's result
+    def update_state_attribute # rubocop:disable Naming/PredicateMethod -- returns update's result
       return false unless object.update(state_attribute => state)
 
       @previous_state = previous_state
@@ -149,15 +159,6 @@ module HasStateMachine
       klass&.new(object, transient_values)&.bind_state_machine(state_machine)
     end
 
-    def lookup_state_machine
-      model_class = object.class
-      return unless model_class.respond_to?(:state_machine_definitions)
-
-      machines = model_class.state_machine_definitions.each_value
-      namespace = self.class.name&.deconstantize
-      machines.find { |machine| machine.workflow_namespace_for(model_class).to_s == namespace } || machines.first
-    end
-
     def valid_transition?(desired_state_instance)
       return true if object.skip_state_validations
 
@@ -166,7 +167,7 @@ module HasStateMachine
         desired_state_instance&.valid?
     end
 
-    def with_transition_options(options)
+    def with_transition_options(options, &block)
       object.skip_state_validations = options[:skip_validations]
       yield
       object.skip_state_validations = false

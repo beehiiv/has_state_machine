@@ -395,6 +395,79 @@ RSpec.describe "Multiple state machines on one model" do
       expect(model.new).to respond_to(:deletion_state_removing?)
     end
 
+    it "uses the state attribute as the suffix for suffix: true" do
+      model = build_model do
+        has_state_machine states: %i[draft published]
+        has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+          workflow_namespace: "Workflow::EpisodeDeletion", suffix: true
+      end
+
+      expect(model.removing_deletion_state.pluck(:id)).to eq([removing.id])
+      expect(model.find(removing.id)).to be_removing_deletion_state
+      expect(model.new).to be_available_deletion_state
+      expect(model).not_to respond_to(:removing)
+      expect(model.new).not_to respond_to(:removing?)
+    end
+
+    [:deletion, "deletion"].each do |suffix|
+      it "uses a custom #{suffix.class} suffix for scopes and predicates" do
+        model = build_model do
+          has_state_machine states: %i[draft published]
+          has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+            workflow_namespace: "Workflow::EpisodeDeletion", suffix: suffix
+        end
+
+        expect(model.removing_deletion.pluck(:id)).to eq([removing.id])
+        expect(model.find(removing.id)).to be_removing_deletion
+      end
+    end
+
+    it "combines a custom prefix and suffix" do
+      model = build_model do
+        has_state_machine states: %i[draft published]
+        has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+          workflow_namespace: "Workflow::EpisodeDeletion", prefix: :deletion, suffix: :workflow
+      end
+
+      expect(model.deletion_removing_workflow.pluck(:id)).to eq([removing.id])
+      expect(model.find(removing.id)).to be_deletion_removing_workflow
+    end
+
+    it "combines prefix: true and suffix: true using the state attribute" do
+      model = build_model do
+        has_state_machine states: %i[draft published]
+        has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+          workflow_namespace: "Workflow::EpisodeDeletion", prefix: true, suffix: true
+      end
+
+      expect(model.deletion_state_removing_deletion_state.pluck(:id)).to eq([removing.id])
+      expect(model.find(removing.id)).to be_deletion_state_removing_deletion_state
+    end
+
+    [nil, false].each do |suffix|
+      it "leaves helper names unchanged for suffix: #{suffix.inspect}" do
+        model = build_model do
+          has_state_machine states: %i[draft published]
+          has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+            workflow_namespace: "Workflow::EpisodeDeletion", prefix: false, suffix: suffix
+        end
+
+        expect(model.removing.pluck(:id)).to eq([removing.id])
+        expect(model.find(removing.id)).to be_removing
+      end
+    end
+
+    it "skips suffixed scopes but keeps suffixed predicates with scopes: false" do
+      model = build_model do
+        has_state_machine states: %i[draft published]
+        has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+          workflow_namespace: "Workflow::EpisodeDeletion", suffix: :deletion, scopes: false
+      end
+
+      expect(model).not_to respond_to(:removing_deletion)
+      expect(model.find(removing.id)).to be_removing_deletion
+    end
+
     it "skips scopes but keeps predicates with scopes: false" do
       model = build_model do
         has_state_machine states: %i[draft published]
@@ -408,6 +481,13 @@ RSpec.describe "Multiple state machines on one model" do
   end
 
   describe "definition-time errors" do
+    it "rejects an empty declaration before registering a machine" do
+      model = build_model {}
+
+      expect { model.has_state_machine }.to raise_error(ArgumentError, /at least one state/)
+      expect(model).not_to respond_to(:state_machine_definitions)
+    end
+
     it "raises when a predicate would collide with another machine's" do
       expect do
         build_model do
@@ -440,6 +520,28 @@ RSpec.describe "Multiple state machines on one model" do
       end.to raise_error(ArgumentError, /class method "deletion_removing"/)
     end
 
+    it "rejects colliding suffixed predicates even with scopes disabled" do
+      expect do
+        build_model do
+          has_state_machine states: %i[draft archived], suffix: :workflow
+          has_state_machine states: %i[available archived], state_attribute: :deletion_state,
+            workflow_namespace: "Workflow::EpisodeDeletion", suffix: :workflow, scopes: false
+        end
+      end.to raise_error(ArgumentError, /instance method "archived_workflow\?"\. Pass prefix: or suffix:\./)
+    end
+
+    it "rejects a suffixed scope that collides with an existing class method" do
+      expect do
+        build_model do
+          def self.removing_deletion = nil
+
+          has_state_machine states: %i[draft published]
+          has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+            workflow_namespace: "Workflow::EpisodeDeletion", suffix: :deletion
+        end
+      end.to raise_error(ArgumentError, /class method "removing_deletion"\. Pass prefix:, suffix:, or scopes: false\./)
+    end
+
     it "leaves the model unchanged when a definition raises" do
       model = build_model { has_state_machine states: %i[draft archived] }
 
@@ -465,6 +567,16 @@ RSpec.describe "Multiple state machines on one model" do
         build_model do
           has_state_machine states: %i[draft published]
           has_state_machine states: %i[available removing], state_attribute: :deletion_state, prefix: :deletion
+        end
+      end.to raise_error(ArgumentError, /workflow namespace/)
+    end
+
+    it "treats a blank namespace as the default during conflict detection" do
+      expect do
+        build_model do
+          has_state_machine states: %i[draft published]
+          has_state_machine states: %i[available removing], state_attribute: :deletion_state,
+            workflow_namespace: "", prefix: :deletion
         end
       end.to raise_error(ArgumentError, /workflow namespace/)
     end
@@ -517,6 +629,18 @@ RSpec.describe "Multiple state machines on one model" do
   end
 
   describe "options" do
+    ["", " "].each do |namespace|
+      it "resolves the default namespace and state classes for #{namespace.inspect}" do
+        model = build_model {}
+        stub_const("DefaultNamespaceEpisode", model)
+        stub_const("Workflow::DefaultNamespaceEpisode", Workflow::Episode)
+        model.has_state_machine states: %i[draft published], workflow_namespace: namespace
+
+        expect(model.workflow_namespace).to eq("Workflow::DefaultNamespaceEpisode")
+        expect(model.new.status).to be_a(Workflow::Episode::Draft)
+      end
+    end
+
     it "accepts attribute: as an alias for state_attribute:" do
       model = build_model do
         has_state_machine states: %i[draft published]
@@ -538,6 +662,19 @@ RSpec.describe "Multiple state machines on one model" do
   end
 
   describe "inheritance" do
+    it "allows a subclass to redeclare a machine without changing its parent" do
+      child = Class.new(Episode)
+      child.has_state_machine states: Episode.workflow_states, workflow_namespace: "Workflow::Episode",
+        state_validations_on_object: false
+
+      expect(child.state_validations_on_object?).to be(false)
+      expect(child.new.status).to be_a(Workflow::Episode::Draft)
+      expect(Episode.state_validations_on_object?).to be(true)
+      expect(Episode.workflow_namespace).to eq("Workflow::Episode")
+      expect(child.state_machine_definitions[:deletion_state])
+        .to equal(Episode.state_machine_definitions[:deletion_state])
+    end
+
     it "gives a subclass its parent's machines plus its own" do
       expect(ReviewedEpisode.state_machine_definitions.keys).to eq(%i[status deletion_state review_state])
 
