@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "has_state_machine/definition_builder"
 require "has_state_machine/state"
 require "has_state_machine/state_helpers"
 
@@ -8,60 +9,29 @@ module HasStateMachine
     extend ActiveSupport::Concern
 
     class_methods do
-      ##
-      # Configures the state machine for the ActiveRecord object and adds some
-      # useful helper methods such as scopes, boolean checks, etc.
+      # Declares one machine per state attribute. The first machine is primary
+      # for the class and instance readers. Unknown options warn and are ignored.
       #
-      # @param states [Array<Symbol>] the list of possible states in a state machine
-      #   @note the first state is used as the initial state
-      # @param options [Hash] a hash of additional options for the state machine
+      # @param states [Array<String, Symbol>] allowed states; the first is the default
+      # @param options [Hash]
+      # @option options [String, Symbol] :state_attribute (:status) state column
+      # @option options [String, Symbol] :attribute alias for :state_attribute
+      # @option options [String] :workflow_namespace ("Workflow::<Model>") state-class namespace; unique per model
+      # @option options [Boolean] :state_validations_on_object (true) run state validations on the model
+      # @option options [Boolean, String, Symbol] :prefix scope/predicate prefix; true uses the state attribute
+      # @option options [Boolean, String, Symbol] :suffix scope/predicate suffix; true uses the state attribute
+      # @option options [Boolean] :scopes (true) generate scopes
       #
       # @example
       #   class Post < ApplicationRecord
       #     has_state_machine states: %i(draft published archived)
+      #     has_state_machine states: %i(available removing),
+      #       state_attribute: :deletion_state,
+      #       workflow_namespace: "Workflow::PostDeletion",
+      #       prefix: :deletion
       #   end
       def has_state_machine(states: [], **options)
-        raise ArgumentError, "Please define at least one state to use has_state_machine." if states.empty?
-
-        define_helper_methods(
-          states: states.map(&:to_s),
-          options: options.with_indifferent_access
-        )
-
-        include HasStateMachine::StateHelpers
-      end
-
-      private
-
-      def define_helper_methods(states:, options:)
-        ##
-        # The list of possible states in the state machine.
-        define_singleton_method :workflow_states do
-          states
-        end
-
-        ##
-        # Defines the column name for the attribute holding the current status.
-        # Can be overwritten to use a different column name.
-        define_singleton_method :state_attribute do
-          options[:state_attribute]&.to_sym || :status
-        end
-
-        ##
-        # Defines the namespace of the models possible states.
-        # Can be overwritten to use a different namespace.
-        define_singleton_method :workflow_namespace do
-          options[:workflow_namespace] || "Workflow::#{self}"
-        end
-
-        ##
-        # Determines whether or not the state validations should be run
-        # as part of the object validations; they are by default.
-        define_singleton_method :state_validations_on_object? do
-          return true unless options.key?(:state_validations_on_object)
-
-          options[:state_validations_on_object]
-        end
+        HasStateMachine::DefinitionBuilder.new(self, states: states, **options).call
       end
     end
   end

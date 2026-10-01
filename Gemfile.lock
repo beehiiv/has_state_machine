@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    has_state_machine (1.2.1)
+    has_state_machine (1.2.2)
       rails (>= 5.2)
 
 GEM
@@ -292,6 +292,7 @@ DEPENDENCIES
   bigdecimal
   drb
   has_state_machine!
+  json (< 3.0)
   mutex_m
   nokogiri (< 1.19)
   parallel (< 2.0)

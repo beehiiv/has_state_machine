@@ -5,10 +5,7 @@ module HasStateMachine
     extend ActiveSupport::Concern
 
     included do
-      ##
-      # Sometimes you may want to skip the validations defined on
-      # the state when validating your object; set this accessor
-      # to true to do so.
+      # Skips state-instance validations for every machine on this object.
       attr_accessor :skip_state_validations
 
       delegate \
@@ -16,121 +13,98 @@ module HasStateMachine
         :state_validations_on_object?,
         :workflow_namespace,
         :workflow_states,
-        to: "self.class"
+        to: :class
+    end
 
-      ##
-      # Sets the default value of the state method to the initial state
-      # defined in the state machine.
-      attribute state_attribute, :string, default: initial_state
+    private
 
-      ##
-      # Validate that the current state is a possible state, that there is a
-      # state class defined for it, and run the validations from the state
-      # class instance if need be.
-      validates state_attribute, inclusion: {in: workflow_states}, presence: true
-      validate :state_class_defined?
-      validate :state_instance_validations, if: :should_validate_state?
+    # Resolve at call time so redeclarations take effect.
+    def state_machine_definition_for(attr)
+      self.class.state_machine_definitions.fetch(attr)
+    end
 
-      ##
-      # Overwrites the default getter for the state attribute to
-      # instantiate a HasStateMachine::State instance instead. If the state
-      # class does not exist, it simply returns a string.
-      #
-      # @return [HasStateMachine::State] the current state represented by a instance
-      #
-      # @example
-      #   post = Post.new(status: "draft")
-      #   post.status.class #=> Workflow::Post::Draft
-      define_method state_attribute.to_s do
-        return state_class.new(self) if state_class.present?
+    # Default to the primary machine for 1.x compatibility.
+    def current_state(machine = self.class.primary_state_machine_definition)
+      self[machine.state_attribute]
+    end
 
-        current_state
-      end
+    def state_class(machine = self.class.primary_state_machine_definition)
+      machine.state_class_for(current_state(machine), self.class)
+    end
 
-      workflow_states.each do |state|
-        ##
-        # Defines scopes based on the state machine's possible states
-        #
-        # @return [ActiveRecord_Relation]
-        # @example Retreiving a users published posts
-        #   > Post.published.where(user: user)
-        #   #=> [#<Post>]
-        if defined?(ActiveRecord) && (self < ActiveRecord::Base)
-          scope state, -> { where("#{table_name}.#{state_attribute} = ?", state) }
-        end
+    def state_class_defined?(machine = self.class.primary_state_machine_definition)
+      return if state_class(machine)
 
-        ##
-        # Defines boolean helpers to determine if the active state matches
-        # the specified state.
-        #
-        # @return [Boolean] whether or not the active state matches the call
-        # @example Check if a post is published
-        #   > post.published?
-        #   #=> true
-        define_method :"#{state}?" do
-          current_state == state
-        end
-      end
+      errors.add(machine.state_attribute, :not_implemented, message: "class must be implemented")
+    end
 
-      private
+    def should_validate_state?(machine = self.class.primary_state_machine_definition)
+      return false unless machine.state_validations_on_object?
 
-      ##
-      # Getter for the current state of the model based on the configured state
-      # attribute.
-      def current_state
-        self[state_attribute]
-      end
+      !skip_state_validations
+    end
 
-      ##
-      # Predicate method for determining whether or not the state validations
-      # should be run as part of the object validations.
-      def should_validate_state?
-        return false unless state_validations_on_object?
+    def state_instance_validations(machine = self.class.primary_state_machine_definition)
+      return unless state_class(machine)
 
-        !skip_state_validations
-      end
+      current_state_instance = public_send(machine.state_attribute)
+      return if current_state_instance.valid?
 
-      ##
-      # Gets the HasStateMachine::State class that represents the current state
-      # of the model.
-      def state_class
-        return unless current_state.present?
-
-        "#{workflow_namespace}::#{current_state.classify}".safe_constantize
-      end
-
-      ##
-      # True unless unable to find the HasStateMachine::State class for the current
-      # state.
-      def state_class_defined?
-        return if state_class.present?
-
-        errors.add(state_attribute, :not_implemented, message: "class must be implemented")
-      end
-
-      ##
-      # Run the validations defined on the current HasStateMachine::State. Errors found there
-      # should be added to this object.
-      def state_instance_validations
-        return unless state_class.present?
-
-        current_state_instance = public_send(state_attribute.to_s)
-        return if current_state_instance.valid?
-
-        current_state_instance.errors.each do |error|
-          errors.add(error.attribute, error.type)
-        end
+      current_state_instance.errors.each do |error|
+        errors.add(error.attribute, error.type)
       end
     end
 
     class_methods do
+      delegate :state_attribute, :state_validations_on_object?, to: :primary_state_machine_definition
+      delegate :states, to: :primary_state_machine_definition, prefix: :workflow
+
+      def workflow_namespace
+        primary_state_machine_definition.workflow_namespace_for(self)
+      end
+
+      # First declaration, including inherited machines.
+      # @return [HasStateMachine::Machine]
+      def primary_state_machine_definition
+        state_machine_definitions.each_value.first
+      end
+
       private
 
-      ##
-      # The initial state of the workflow based on the first state defined in the model
-      # has_state_machine states array.
-      def initial_state
-        workflow_states.first
+      def define_state_machine_methods(machine)
+        attr = machine.state_attribute
+
+        attribute attr, :string, default: machine.initial_state
+
+        validates attr, inclusion: {in: machine.states}, presence: true
+
+        if machine.equal?(primary_state_machine_definition)
+          validate :state_class_defined?
+          validate :state_instance_validations, if: :should_validate_state?
+        else
+          validate { state_class_defined?(state_machine_definition_for(attr)) }
+          validate(if: -> { should_validate_state?(state_machine_definition_for(attr)) }) do
+            state_instance_validations(state_machine_definition_for(attr))
+          end
+        end
+
+        define_method attr do
+          current_machine = state_machine_definition_for(attr)
+          klass = state_class(current_machine)
+          return klass.new(self).bind_state_machine(current_machine) if klass
+
+          current_state(current_machine)
+        end
+
+        machine.states.each do |state|
+          if machine.scopes? && defined?(ActiveRecord) && (self < ActiveRecord::Base)
+            scope machine.scope_name(state), -> { where(attr => state) }
+          end
+
+          define_method machine.predicate_name(state) do
+            self[attr] == state
+          end
+        end
       end
     end
   end

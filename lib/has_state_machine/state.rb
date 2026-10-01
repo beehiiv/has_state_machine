@@ -8,30 +8,16 @@ module HasStateMachine
     extend ActiveModel::Callbacks
     include ActiveModel::Validations
 
-    attr_reader :object, :state
+    attr_reader :object
 
-    ##
-    # Defines the before_transition and after_transition callbacks
-    # for use on a HasStateMachine::State instance.
     define_model_callbacks :transition, only: %i[before after]
 
-    ##
-    # Defines the after_transition_commit callback, which runs once a
-    # successful transition is committed to the database.
     define_model_callbacks :transition_commit, only: %i[after]
 
-    ##
-    # possible_transitions - Retrieves the next available transitions for a given state.
-    # transactional? - Determines whether or not the transition should happen with a transactional block.
-    # state - The underscored name of the state
-    # transients - Specified list of optional transient attributes on this state
-    delegate :possible_transitions, :transactional?, :state, :transients, to: "self.class"
+    delegate :possible_transitions, :transactional?, :state, :transients, to: :class
 
-    ##
-    # Initializes the HasStateMachine::State instance.
-    #
     # @example
-    #   state = Workflow::Post::Draft.new(post) #=> "draft"
+    #   Workflow::Post::Draft.new(post) #=> "draft"
     def initialize(object, transient_values = {})
       @object = object
 
@@ -42,25 +28,48 @@ module HasStateMachine
       super(state)
     end
 
-    ##
-    # Determines if the given desired state exists in the predetermined
-    # list of allowed transitions.
-    # @param desired_state [String, Symbol] the state to check if the object can transition to
-    # @return [Boolean] whether or not the object can transition to the desired state
+    # Bound by the model getter; direct instances resolve by namespace,
+    # falling back to the primary machine.
+    #
+    # @return [HasStateMachine::Machine, nil]
+    def state_machine
+      return @state_machine if @state_machine
+
+      model_class = object.class
+      definitions = model_class.try(:state_machine_definitions)
+      return unless definitions
+
+      machines = definitions.each_value
+      namespace = self.class.name&.deconstantize
+
+      @state_machine = machines.find do |machine|
+        machine.workflow_namespace_for(model_class).to_s == namespace
+      end || machines.first
+    end
+
+    # @return [Symbol]
+    def state_attribute
+      state_machine&.state_attribute || object.state_attribute
+    end
+
+    # @api private
+    def bind_state_machine(machine)
+      @state_machine = machine
+      self
+    end
+
+    # Checks the allowed transition list without running validations.
+    # @param desired_state [String, Symbol]
     def can_transition?(desired_state)
       possible_transitions.include? desired_state.to_s
     end
 
-    ##
-    # Checks to see if the desired state is valid and then gives
-    # responsibility to the desired state's instance to make the
-    # transition.
+    # Validates and transitions to the target state, copying its errors to the model.
     #
-    # @param desired_state [String] the state to transition to
-    # @param options [Hash] a hash of additional options for
-    #   transitioning the object
-    #
-    # @return [Boolean] whether or not the transition took place
+    # @param desired_state [String, Symbol]
+    # @param options [Hash] target-state transients and transition options
+    # @option options [Boolean] :skip_validations (false) bypass transition checks and state validations
+    # @return [Boolean] whether the transition succeeded
     def transition_to(desired_state, **options)
       transitioned = false
       options = options.symbolize_keys
@@ -83,36 +92,29 @@ module HasStateMachine
       end
     end
 
-    ##
-    # Makes the actual transition from one state to the next and
-    # runs the before and after transition callbacks.
-    #
-    # @return [Boolean] whether or not the transition succeeded
+    # Persists the target state and runs transition callbacks.
+    # @return [Boolean] whether the transition succeeded
     def perform_transition! # rubocop:disable Naming/PredicateMethod -- public API
       transitioned = run_callbacks :transition do
-        object.update("#{object.state_attribute}": state)
+        update_state_attribute
       end
+
       return false unless transitioned
 
-      @previous_state = previous_state
       enqueue_transition_commit_callbacks
       true
     end
 
-    ##
-    # Same as {#perform_transition!}, but wrapped in a transaction so
-    # callbacks can roll the transition back.
-    #
-    # @return [Boolean] whether or not the transition succeeded
+    # Wraps the transition in a transaction that callbacks can roll back.
+    # @return [Boolean] whether the transition succeeded
     def perform_transactional_transition! # rubocop:disable Naming/PredicateMethod -- public API
       ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
         run_callbacks :transition do
-          rollback_transition unless object.update("#{object.state_attribute}": state)
+          rollback_transition unless update_state_attribute
         end
       end
 
-      @previous_state = previous_state
-      return false unless object.reload.public_send(object.state_attribute) == state
+      return false unless object.reload.public_send(state_attribute) == state
 
       enqueue_transition_commit_callbacks
       true
@@ -120,19 +122,20 @@ module HasStateMachine
 
     private
 
-    ##
-    # Runs the after_transition_commit callbacks once the outermost open
-    # transaction commits, discarding them on rollback.
-    #
-    # @note Registers on the connection's current transaction because
-    #   +ActiveRecord.after_all_transactions_commit+ ignores non-joinable
-    #   transactions (like the gem's own) and would fire immediately.
-    # @return [void]
+    # Capture the previous state before transition callbacks can save the model again.
+    def update_state_attribute # rubocop:disable Naming/PredicateMethod -- returns update's result
+      return false unless object.update(state_attribute => state)
+
+      @previous_state = previous_state
+      true
+    end
+
+    # Use the current transaction: after_all_transactions_commit ignores our
+    # non-joinable transactions and would run callbacks before commit.
     def enqueue_transition_commit_callbacks
       current_transaction = object.class.connection.current_transaction
 
-      # Rails < 7.2 has no Transaction#after_commit, so callbacks fire
-      # immediately with no deferral. Drop this guard at Rails 7.2+.
+      # Rails < 7.2 has no Transaction#after_commit; run callbacks immediately.
       return run_callbacks(:transition_commit) { true } unless current_transaction.respond_to?(:after_commit)
 
       current_transaction.after_commit { run_callbacks(:transition_commit) { true } }
@@ -142,17 +145,18 @@ module HasStateMachine
       raise ActiveRecord::Rollback
     end
 
-    ##
-    # Helper method for grabbing the previous state of the object after
-    # it has been transitioned to the new state. Useful in
-    # after_transition blocks
+    # Available in after_transition and after_transition_commit callbacks.
     def previous_state
-      @previous_state.presence || object.previous_changes[object.state_attribute]&.first
+      @previous_state.presence || object.previous_changes[state_attribute]&.first
     end
 
     def state_instance(desired_state, transient_values)
-      klass = "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
-      klass&.new(object, transient_values)
+      klass = if state_machine
+        state_machine.state_class_for(desired_state, object.class)
+      else
+        "#{object.workflow_namespace}::#{desired_state.to_s.classify}".safe_constantize
+      end
+      klass&.new(object, transient_values)&.bind_state_machine(state_machine)
     end
 
     def valid_transition?(desired_state_instance)
@@ -186,20 +190,13 @@ module HasStateMachine
         @transients || []
       end
 
-      ##
-      # Set the options for the HasStateMachine::State classes to define the possible
-      # states the current state can transition to and whether or not transitioning
-      # to the state should be performed within a transaction.
+      # transitions_to applies when leaving this state; transactional and transients apply when entering it.
       def state_options(transitions_to: [], transactional: false, transients: [])
         @possible_transitions = transitions_to.map(&:to_s)
         @transactional = transactional
         @transients = transients.map(&:to_sym)
 
-        transients.each do |transient_name|
-          define_method(transient_name) do
-            instance_variable_get(:"@#{transient_name}")
-          end
-        end
+        attr_reader(*@transients)
       end
     end
   end
