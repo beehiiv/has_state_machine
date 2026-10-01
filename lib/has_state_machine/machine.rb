@@ -34,7 +34,9 @@ module HasStateMachine
     end
 
     def scopes?
-      @scopes != false
+      return @scopes_boolean if defined?(@scopes_boolean)
+
+      @scopes_boolean = @scopes != false
     end
 
     def scope_name(state)
