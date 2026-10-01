@@ -14,7 +14,7 @@ module HasStateMachine
       @state_validations_on_object = state_validations_on_object
       @prefix = prefix
       @suffix = suffix
-      @scopes = scopes
+      @scopes = scopes != false
       freeze
     end
 
@@ -34,9 +34,7 @@ module HasStateMachine
     end
 
     def scopes?
-      return @scopes_boolean if defined?(@scopes_boolean)
-
-      @scopes_boolean = @scopes != false
+      @scopes
     end
 
     def scope_name(state)
