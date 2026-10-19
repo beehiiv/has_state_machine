@@ -130,15 +130,18 @@ module HasStateMachine
       true
     end
 
-    # Use the current transaction: after_all_transactions_commit ignores our
-    # non-joinable transactions and would run callbacks before commit.
     def enqueue_transition_commit_callbacks
-      current_transaction = object.class.connection.current_transaction
+      after_outermost_commit { run_callbacks(:transition_commit) { true } }
+    end
 
-      # Rails < 7.2 has no Transaction#after_commit; run callbacks immediately.
-      return run_callbacks(:transition_commit) { true } unless current_transaction.respond_to?(:after_commit)
+    # Walk up to the real COMMIT: Rails runs after_commit early under a
+    # non-joinable parent, and after_all_transactions_commit skips those.
+    def after_outermost_commit(&block)
+      transaction = object.class.connection.current_transaction
+      return yield unless transaction.open?
 
-      current_transaction.after_commit { run_callbacks(:transition_commit) { true } }
+      # Rails < 7.2 has no Transaction#after_commit.
+      transaction.try(:after_commit) { after_outermost_commit(&block) } || yield
     end
 
     def rollback_transition

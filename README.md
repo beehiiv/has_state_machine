@@ -292,7 +292,7 @@ end
 `after_transition_commit` callbacks run after the outermost database transaction commits. In detail:
 
 - If no transaction is open when `transition_to` is called, they run immediately after the transition commits.
-- If the transition happens inside an open transaction — an app-level `ActiveRecord::Base.transaction`, or a nested transition triggered from another state's `before_transition`/`after_transition` — they are deferred until that outermost transaction commits.
+- If the transition happens inside an open transaction — an app-level `ActiveRecord::Base.transaction`, or a nested transition triggered from another state's `before_transition`/`after_transition` — they are deferred until that outermost transaction commits, however deeply nested, including through `requires_new` savepoints and `joinable: false` blocks.
 - They never run if the transition fails, if `rollback_transition` is raised, or if a surrounding transaction rolls back after the transition. Multiple transitions inside one transaction each fire their callbacks after commit, in transition order.
 
 This makes `after_transition_commit` the safe place to enqueue background jobs, call external APIs, etc.: the work only happens once the new state is actually visible to other database connections.
