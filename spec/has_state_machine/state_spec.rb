@@ -18,13 +18,13 @@ class Swimmer < ActiveRecord::Base
     @callback_sequence ||= []
   end
 
-  has_state_machine states: %i[diving swimming floating tanning tubing lotioning racing]
+  has_state_machine states: %i[diving swimming floating tanning tubing lotioning racing relaying]
 end
 
 module Workflow
   module Swimmer
     class Diving < HasStateMachine::State
-      state_options transitions_to: %i[swimming floating tanning tubing lotioning racing]
+      state_options transitions_to: %i[swimming floating tanning tubing lotioning racing relaying]
     end
 
     class Swimming < HasStateMachine::State
@@ -95,6 +95,17 @@ module Workflow
         rollback_transition if rollback_after
       end
     end
+
+    # Chains three transactional transitions: object -> buddy -> buddy.buddy.
+    class Relaying < HasStateMachine::State
+      state_options transactional: true, transients: %i[rollback_after]
+
+      after_transition do
+        object.buddy.status.transition_to(:racing)
+        object.buddy_commit_ran_during_transition = object.buddy.buddy.after_transition_commit_boolean
+        rollback_transition if rollback_after
+      end
+    end
   end
 end
 
@@ -114,7 +125,7 @@ RSpec.describe HasStateMachine::State do
   end
 
   describe "#possible_transitions" do
-    it { expect(subject.possible_transitions).to eq(%w[swimming floating tanning tubing lotioning racing]) }
+    it { expect(subject.possible_transitions).to eq(%w[swimming floating tanning tubing lotioning racing relaying]) }
   end
 
   describe "#can_transition?" do
@@ -261,6 +272,43 @@ RSpec.describe HasStateMachine::State do
 
     if supports_deferred_commit_callbacks?
       describe "inside an app-level transaction" do
+        [nil, false].each do |registration_result|
+          context "when after_commit returns #{registration_result.inspect}" do
+            it "defers the callback and runs it exactly once on commit", :aggregate_failures do
+              sequence_before_commit = nil
+
+              ActiveRecord::Base.transaction do
+                transaction = object.class.connection.current_transaction
+                allow(transaction).to receive(:after_commit).and_wrap_original do |original, &callback|
+                  original.call(&callback)
+                  registration_result
+                end
+
+                subject.transition_to(:swimming)
+                sequence_before_commit = object.callback_sequence.dup
+              end
+
+              expect(sequence_before_commit).to eq([:after_transition])
+              expect(object.callback_sequence).to eq(%i[after_transition after_transition_commit])
+            end
+
+            it "does not run the callback on rollback" do
+              ActiveRecord::Base.transaction do
+                transaction = object.class.connection.current_transaction
+                allow(transaction).to receive(:after_commit).and_wrap_original do |original, &callback|
+                  original.call(&callback)
+                  registration_result
+                end
+
+                subject.transition_to(:swimming)
+                raise ActiveRecord::Rollback
+              end
+
+              expect(object.callback_sequence).to eq([:after_transition])
+            end
+          end
+        end
+
         it "defers after_transition_commit until the outer transaction commits" do
           ActiveRecord::Base.transaction do
             subject.transition_to(:swimming)
@@ -314,6 +362,73 @@ RSpec.describe HasStateMachine::State do
         end
       end
 
+      describe "inside nested app-level transactions" do
+        it "defers after_transition_commit through a requires_new savepoint" do
+          ActiveRecord::Base.transaction do
+            ActiveRecord::Base.transaction(requires_new: true) do
+              subject.transition_to(:swimming)
+            end
+
+            expect(object.after_transition_commit_boolean).to be_falsey
+          end
+
+          expect(object.after_transition_commit_boolean).to be(true)
+        end
+
+        it "defers after_transition_commit through a non-joinable savepoint" do
+          ActiveRecord::Base.transaction do
+            ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+              subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
+            end
+
+            expect(object.after_transition_commit_boolean).to be_falsey
+          end
+
+          expect(object.after_transition_commit_boolean).to be(true)
+        end
+
+        # Rails runs these callbacks on savepoint release, before the real COMMIT.
+        it "defers after_transition_commit through a savepoint under a non-joinable transaction" do
+          ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+            ActiveRecord::Base.transaction(requires_new: true) do
+              subject.transition_to(:swimming)
+            end
+
+            expect(object.after_transition_commit_boolean).to be_falsey
+          end
+
+          expect(object.after_transition_commit_boolean).to be(true)
+        end
+
+        it "defers transactional after_transition_commit through stacked non-joinable savepoints" do
+          ActiveRecord::Base.transaction do
+            ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+              ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+                subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
+              end
+
+              expect(object.after_transition_commit_boolean).to be_falsey
+            end
+
+            expect(object.after_transition_commit_boolean).to be_falsey
+          end
+
+          expect(object.after_transition_commit_boolean).to be(true)
+        end
+
+        it "does not run after_transition_commit when the outermost transaction rolls back" do
+          ActiveRecord::Base.transaction(requires_new: true, joinable: false) do
+            ActiveRecord::Base.transaction(requires_new: true) do
+              subject.transition_to(:swimming)
+            end
+
+            raise ActiveRecord::Rollback
+          end
+
+          expect(object.after_transition_commit_boolean).to be_falsey
+        end
+      end
+
       describe "nested transitions" do
         let(:buddy) { Swimmer.create }
 
@@ -332,6 +447,27 @@ RSpec.describe HasStateMachine::State do
 
           expect(buddy.after_transition_commit_boolean).to be_falsey
           expect(buddy.reload.status).to eq("diving")
+        end
+
+        describe "three levels deep" do
+          let(:anchor) { Swimmer.create }
+
+          before { buddy.buddy = anchor }
+
+          it "defers the innermost record's after_transition_commit until the outermost commit" do
+            expect(subject.transition_to(:relaying)).to be(true)
+
+            expect(object.buddy_commit_ran_during_transition).to be_falsey
+            expect(anchor.after_transition_commit_boolean).to be(true)
+            expect(anchor.reload.status).to eq("lotioning")
+          end
+
+          it "does not run the innermost record's after_transition_commit when the outermost transition rolls back" do
+            expect(subject.transition_to(:relaying, rollback_after: true)).to be(false)
+
+            expect(anchor.after_transition_commit_boolean).to be_falsey
+            expect(anchor.reload.status).to eq("diving")
+          end
         end
       end
     end
