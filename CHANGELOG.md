@@ -7,6 +7,11 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.3.1] - Oct 22, 2026
+dd7b04d
+### Bug Fixes
+-  defer after_transition_commit until the real outermost commit (#67)
+----
 ## [1.3.0] - Oct  1, 2026
 de4385b
 ### Bug Fixes
