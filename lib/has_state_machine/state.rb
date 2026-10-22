@@ -141,7 +141,9 @@ module HasStateMachine
       return yield unless transaction.open?
 
       # Rails < 7.2 has no Transaction#after_commit.
-      transaction.try(:after_commit) { after_outermost_commit(&block) } || yield
+      return yield unless transaction.respond_to?(:after_commit)
+
+      transaction.after_commit { after_outermost_commit(&block) }
     end
 
     def rollback_transition

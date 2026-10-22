@@ -272,6 +272,43 @@ RSpec.describe HasStateMachine::State do
 
     if supports_deferred_commit_callbacks?
       describe "inside an app-level transaction" do
+        [nil, false].each do |registration_result|
+          context "when after_commit returns #{registration_result.inspect}" do
+            it "defers the callback and runs it exactly once on commit", :aggregate_failures do
+              sequence_before_commit = nil
+
+              ActiveRecord::Base.transaction do
+                transaction = object.class.connection.current_transaction
+                allow(transaction).to receive(:after_commit).and_wrap_original do |original, &callback|
+                  original.call(&callback)
+                  registration_result
+                end
+
+                subject.transition_to(:swimming)
+                sequence_before_commit = object.callback_sequence.dup
+              end
+
+              expect(sequence_before_commit).to eq([:after_transition])
+              expect(object.callback_sequence).to eq(%i[after_transition after_transition_commit])
+            end
+
+            it "does not run the callback on rollback" do
+              ActiveRecord::Base.transaction do
+                transaction = object.class.connection.current_transaction
+                allow(transaction).to receive(:after_commit).and_wrap_original do |original, &callback|
+                  original.call(&callback)
+                  registration_result
+                end
+
+                subject.transition_to(:swimming)
+                raise ActiveRecord::Rollback
+              end
+
+              expect(object.callback_sequence).to eq([:after_transition])
+            end
+          end
+        end
+
         it "defers after_transition_commit until the outer transaction commits" do
           ActiveRecord::Base.transaction do
             subject.transition_to(:swimming)
