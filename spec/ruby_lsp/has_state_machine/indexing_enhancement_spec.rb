@@ -138,6 +138,27 @@ RSpec.describe RubyLsp::HasStateMachine::IndexingEnhancement do
     expect(registry.model_for("Workflow::NewMarketing")).to eq("Subscription")
   end
 
+  it "drops namespace registrations when a re-index removes the last has_state_machine call" do
+    uri = index_source("/app/models/subscription.rb", <<~RUBY)
+      class Subscription < ApplicationRecord
+        has_state_machine states: %i[unset active], workflow_namespace: "Workflow::SubscriptionMarketing"
+      end
+    RUBY
+    index_source("/app/models/post.rb", <<~RUBY)
+      class Post < ApplicationRecord
+        has_state_machine states: %i[draft], workflow_namespace: "Workflow::CustomPost"
+      end
+    RUBY
+
+    index.handle_change(uri, <<~RUBY)
+      class Subscription < ApplicationRecord
+      end
+    RUBY
+
+    expect(registry.model_for("Workflow::SubscriptionMarketing")).to be_nil
+    expect(registry.model_for("Workflow::CustomPost")).to eq("Post")
+  end
+
   it "skips predicate indexing cleanly when states or affixes are dynamic" do
     index_source("/app/models/dynamic_model.rb", <<~RUBY)
       class DynamicModel < ApplicationRecord

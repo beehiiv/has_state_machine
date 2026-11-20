@@ -3,7 +3,7 @@
 require "ruby_lsp/addon"
 
 # Ruby LSP 0.27 replaces RubyIndexer with Rubydex; revisit once Rubydex DSL indexing lands.
-::RubyLsp::Addon.depend_on_ruby_lsp!(">= 0.22.0", "< 0.27.0") if ::RubyLsp::Addon.respond_to?(:depend_on_ruby_lsp!)
+::RubyLsp::Addon.depend_on_ruby_lsp!(">= 0.23.0", "< 0.27.0") if ::RubyLsp::Addon.respond_to?(:depend_on_ruby_lsp!)
 
 require "has_state_machine/version"
 require_relative "definition"

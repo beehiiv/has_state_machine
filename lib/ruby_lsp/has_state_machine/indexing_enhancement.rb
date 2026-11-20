@@ -5,15 +5,17 @@ require_relative "namespace_registry"
 module RubyLsp
   module HasStateMachine
     class IndexingEnhancement < ::RubyIndexer::Enhancement
+      def initialize(listener)
+        super
+        NamespaceRegistry.instance.clear_uri(listener.instance_variable_get(:@uri))
+      end
+
       def on_call_node_enter(call_node)
         return unless call_node.name == :has_state_machine
         return unless call_node.receiver.nil? || call_node.receiver.is_a?(::Prism::SelfNode)
 
         owner = @listener.current_owner
         return unless owner
-
-        # Ruby LSP builds a fresh enhancement per indexed file, so this clears each URI once per pass.
-        @uri_cleared ||= NamespaceRegistry.instance.clear_uri(owner.uri) || true
 
         options = extract_options(call_node)
         state_attr, attr_location = extract_state_attribute(options, call_node)
