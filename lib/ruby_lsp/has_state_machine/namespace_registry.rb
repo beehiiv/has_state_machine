@@ -47,10 +47,6 @@ module RubyLsp
         end
       end
 
-      def key?(workflow_namespace)
-        !model_for(workflow_namespace).nil?
-      end
-
       def clear
         @mutex.synchronize do
           @by_uri.clear
@@ -65,24 +61,13 @@ module RubyLsp
         return unless removed
 
         removed.each do |namespace, model|
-          next unless @by_namespace[namespace] == model
-
-          replacement = find_model_for_namespace(namespace)
-          if replacement
-            @by_namespace[namespace] = replacement
-          else
-            @by_namespace.delete(namespace)
-          end
+          @by_namespace[namespace] = find_model_for_namespace(namespace) if @by_namespace[namespace] == model
         end
+        @by_namespace.compact!
       end
 
       def find_model_for_namespace(namespace)
-        @by_uri.each_value do |pairs|
-          pair = pairs.find { |ns, _model| ns == namespace }
-          return pair.last if pair
-        end
-
-        nil
+        @by_uri.values.flatten(1).assoc(namespace)&.last
       end
     end
   end

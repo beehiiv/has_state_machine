@@ -12,33 +12,21 @@ module RubyLsp
         return unless namespace&.start_with?(WORKFLOW_PREFIX)
 
         name = namespace.delete_prefix(WORKFLOW_PREFIX)
-        return if name.empty?
-
-        name
+        name unless name.empty?
       end
 
       def workflow_namespace_for(workflow_class_name)
-        name = workflow_class_name.to_s.delete_prefix("::")
-        return unless name.include?("::")
-
-        namespace = name.sub(/::[^:]+\z/, "")
-        return if namespace.empty?
-
-        namespace
+        namespace = workflow_class_name.to_s.delete_prefix("::").rpartition("::").first
+        namespace unless namespace.empty?
       end
 
       def class_name_from_nesting(nesting)
         parts = Array(nesting).map(&:to_s).reject(&:empty?)
         return if parts.empty? || parts.last.start_with?("<Class:")
 
-        resolved = []
-        parts.reverse_each do |part|
-          resolved.unshift(part.delete_prefix("::"))
-          break if part.start_with?("::")
-        end
-
-        name = resolved.join("::").gsub(/:{3,}/, "::")
-        name unless name.empty?
+        # A `::`-anchored segment resets the lexical scope, so outer segments are dropped.
+        anchor = parts.rindex { |part| part.start_with?("::") } || 0
+        parts[anchor..].join("::").delete_prefix("::")
       end
     end
   end

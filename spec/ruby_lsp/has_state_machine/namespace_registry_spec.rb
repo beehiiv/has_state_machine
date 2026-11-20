@@ -15,7 +15,6 @@ RSpec.describe RubyLsp::HasStateMachine::NamespaceRegistry do
 
       expect(registry.model_for("Workflow::SubscriptionMarketing")).to eq("Subscription")
       expect(registry.model_for("::Workflow::SubscriptionMarketing")).to eq("Subscription")
-      expect(registry.key?("Workflow::SubscriptionMarketing")).to be(true)
     end
 
     it "normalizes leading :: on namespace and model name" do
@@ -33,7 +32,6 @@ RSpec.describe RubyLsp::HasStateMachine::NamespaceRegistry do
       registry.register(uri: "file:///a.rb", workflow_namespace: "Workflow::Post", model_name: "")
 
       expect(registry.model_for("Workflow::Post")).to be_nil
-      expect(registry.key?("Workflow::Post")).to be(false)
     end
   end
 
