@@ -9,10 +9,9 @@ module RubyLsp
       end
 
       def ready_for_ancestry?(superclass_name)
-        return false unless index&.respond_to?(:indexed?)
         return false if index.respond_to?(:initial_indexing_completed) && !index.initial_indexing_completed
 
-        index.indexed?(superclass_name)
+        indexed?(superclass_name)
       end
 
       def indexed?(name)
@@ -82,18 +81,8 @@ module RubyLsp
       end
 
       def resolve_parent_name(parent_name, nesting)
-        return resolve_constant_name(parent_name.delete_prefix("::")) if parent_name.start_with?("::")
-
-        parts = nesting.flat_map { |segment| segment.split("::") }
-        parts.pop
-
-        parts.length.downto(0) do |depth|
-          candidate = depth.zero? ? parent_name : "#{parts[0...depth].join("::")}::#{parent_name}"
-          resolved = resolve_constant_name(candidate)
-          return resolved if resolved
-        end
-
-        nil
+        entry = index.resolve(parent_name, nesting[0...-1])&.first
+        resolve_constant_name(entry.name) if entry
       end
 
       def resolve_constant_name(name, seen = {})

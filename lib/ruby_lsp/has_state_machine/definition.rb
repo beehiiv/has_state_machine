@@ -47,17 +47,15 @@ module RubyLsp
       def workflow_context?
         return false unless current_class_name
 
-        if index.ready_for_ancestry?(STATE_SUPERCLASS) && index.indexed?(current_class_name)
-          return true if index.subclass_of?(current_class_name, STATE_SUPERCLASS)
-
-          # Allow model-scoped workflow concern modules (e.g. Workflow::Video::BroadcastsStatus),
-          # while rejecting non-state classes (e.g. serializers) that happen to call `object`.
-          return workflow_namespace_known? if index.module_only?(current_class_name)
-
-          return false
+        unless index.ready_for_ancestry?(STATE_SUPERCLASS) && index.indexed?(current_class_name)
+          return workflow_namespace_known?
         end
 
-        workflow_namespace_known?
+        return true if index.subclass_of?(current_class_name, STATE_SUPERCLASS)
+
+        # Allow model-scoped workflow concern modules (e.g. Workflow::Video::BroadcastsStatus),
+        # while rejecting non-state classes (e.g. serializers) that happen to call `object`.
+        index.module_only?(current_class_name) && workflow_namespace_known?
       end
 
       def workflow_namespace_known?

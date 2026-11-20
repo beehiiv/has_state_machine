@@ -491,6 +491,60 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
       expect(results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
     end
 
+    it "resolves workflow objects when the superclass uses an aliased namespace" do
+      index_file("/app/services/shared_alias.rb", "SharedAlias = ::Workflow")
+
+      source = <<~RUBY
+        module Workflow
+          class Post::Draft < SharedAlias::State
+            def run
+              object.custom_helper
+            end
+          end
+        end
+      RUBY
+      path = "/app/services/workflow/post/draft.rb"
+      index_file(path, source)
+      complete_indexing!
+
+      object_results = definition_for(path, source, line: 3, character: 8)
+      method_results = definition_for(path, source, line: 3, character: 15)
+
+      expect(object_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(method_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(method_results.first.target_selection_range.start.line).to eq(3)
+    end
+
+    it "resolves superclass names in the lexical scope of compact class declarations" do
+      index_file("/app/services/state.rb", "class State < HasStateMachine::State; end")
+      index_file("/app/services/workflow/post/state.rb", <<~RUBY)
+        module Workflow
+          module Post
+            class State
+            end
+          end
+        end
+      RUBY
+
+      source = <<~RUBY
+        class Workflow::Post::Draft < State
+          def run
+            object.custom_helper
+          end
+        end
+      RUBY
+      path = "/app/services/workflow/post/draft.rb"
+      index_file(path, source)
+      complete_indexing!
+
+      object_results = definition_for(path, source, line: 2, character: 6)
+      method_results = definition_for(path, source, line: 2, character: 13)
+
+      expect(object_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(method_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(method_results.first.target_selection_range.start.line).to eq(3)
+    end
+
     it "keeps resolving object even when String has a non-module constant mixin that breaks linearized_ancestors_of" do
       index_file("/gems/bad_gem/lib/string_ext.rb", <<~RUBY)
         StringVersion = "1.0"
