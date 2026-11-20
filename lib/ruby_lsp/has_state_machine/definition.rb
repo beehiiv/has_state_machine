@@ -29,7 +29,7 @@ module RubyLsp
         is_object_call = object_call?(node)
         is_object_method = !is_object_call && object_method_call?(node)
         return unless is_object_call || is_object_method
-        return unless workflow_state_class?
+        return unless workflow_context?
 
         return if model_entries.empty?
 
@@ -44,12 +44,17 @@ module RubyLsp
         node.equal?(node_context.node) || node.equal?(node_context.call_node)
       end
 
-      def workflow_state_class?
+      def workflow_context?
         return false unless current_class_name
 
-        if index.ready_for_ancestry?(STATE_SUPERCLASS)
-          ancestors = index.ancestors_of(current_class_name)
-          return ancestors.include?(STATE_SUPERCLASS) if ancestors
+        if index.ready_for_ancestry?(STATE_SUPERCLASS) && index.indexed?(current_class_name)
+          return true if index.subclass_of?(current_class_name, STATE_SUPERCLASS)
+
+          # Allow model-scoped workflow concern modules (e.g. Workflow::Video::BroadcastsStatus),
+          # while rejecting non-state classes (e.g. serializers) that happen to call `object`.
+          return workflow_namespace_known? if index.module_only?(current_class_name)
+
+          return false
         end
 
         workflow_namespace_known?

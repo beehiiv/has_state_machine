@@ -490,6 +490,60 @@ RSpec.describe RubyLsp::HasStateMachine::Definition do
       expect(results).to all(be_a(RubyLsp::Interface::LocationLink))
       expect(results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
     end
+
+    it "keeps resolving object even when String has a non-module constant mixin that breaks linearized_ancestors_of" do
+      index_file("/gems/bad_gem/lib/string_ext.rb", <<~RUBY)
+        StringVersion = "1.0"
+
+        class String
+          include StringVersion
+        end
+      RUBY
+
+      source = <<~RUBY
+        module Workflow
+          class Post::Draft < Workflow::State
+            after_transition do
+              object.custom_helper
+              object.published?
+            end
+          end
+        end
+      RUBY
+      path = "/app/services/workflow/post/draft.rb"
+      index_file(path, source)
+      complete_indexing!
+
+      first_results = definition_for(path, source, line: 3, character: 8)
+      second_results = definition_for(path, source, line: 4, character: 8)
+
+      expect(first_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(second_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+    end
+
+    it "resolves object inside model-scoped workflow concern modules" do
+      source = <<~RUBY
+        module Workflow
+          module Post
+            module PublishChecks
+              def ready?
+                object.custom_helper
+              end
+            end
+          end
+        end
+      RUBY
+      path = "/app/services/workflow/post/publish_checks.rb"
+      index_file(path, source)
+      complete_indexing!
+
+      object_results = definition_for(path, source, line: 4, character: 10)
+      method_results = definition_for(path, source, line: 4, character: 17)
+
+      expect(object_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(method_results.map(&:target_uri)).to eq(["file:///app/models/post.rb"])
+      expect(method_results.first.target_selection_range.start.line).to eq(3)
+    end
   end
 
   def build_listener(response:, node:, call_node:, index:, nesting: ["Workflow", "Post::Draft"])

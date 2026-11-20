@@ -9,19 +9,49 @@ module RubyLsp
       end
 
       def ready_for_ancestry?(superclass_name)
-        return false unless index&.respond_to?(:linearized_ancestors_of) && index.respond_to?(:indexed?)
+        return false unless index&.respond_to?(:indexed?)
         return false if index.respond_to?(:initial_indexing_completed) && !index.initial_indexing_completed
 
         index.indexed?(superclass_name)
       end
 
-      # Returns nil when class_name is not yet indexed (e.g. an unsaved file).
-      def ancestors_of(class_name)
-        return unless index&.respond_to?(:linearized_ancestors_of)
+      def indexed?(name)
+        return false unless name && index&.respond_to?(:indexed?)
 
-        index.linearized_ancestors_of(class_name)
-      rescue ::RubyIndexer::Index::NonExistingNamespaceError
-        nil
+        index.indexed?(name)
+      end
+
+      # Walks Entry::Class#parent_class directly instead of calling
+      # RubyIndexer::Index#linearized_ancestors_of: HasStateMachine::State inherits
+      # from String, and any gem monkeypatching String with a non-module constant
+      # mixin causes linearized_ancestors_of to raise and cache a truncated ancestor list.
+      def subclass_of?(class_name, target_ancestor)
+        return false unless class_name && index
+
+        current = class_name
+        seen = {}
+
+        while current && !seen[current]
+          return true if current == target_ancestor
+
+          seen[current] = true
+          entry = superclass_entry(current)
+          return false unless entry
+
+          parent = entry.parent_class
+          return false if parent.nil? || parent == "::Object"
+
+          current = resolve_parent_name(parent, entry.nesting)
+        end
+
+        false
+      end
+
+      def module_only?(name)
+        return false unless name && index
+
+        entries = resolve_entries(name)
+        entries.any? && entries.all?(::RubyIndexer::Entry::Module)
       end
 
       def class_entries(name)
@@ -44,6 +74,41 @@ module RubyLsp
       def resolve_entries(name)
         entries = Array(index[name])
         entries.any?(::RubyIndexer::Entry::UnresolvedConstantAlias) ? Array(index.resolve(name, [])) : entries
+      end
+
+      def superclass_entry(name)
+        entries = resolve_entries(name).grep(::RubyIndexer::Entry::Class)
+        entries.find { |entry| entry.parent_class && entry.parent_class != "::Object" } || entries.first
+      end
+
+      def resolve_parent_name(parent_name, nesting)
+        return resolve_constant_name(parent_name.delete_prefix("::")) if parent_name.start_with?("::")
+
+        parts = nesting.flat_map { |segment| segment.split("::") }
+        parts.pop
+
+        parts.length.downto(0) do |depth|
+          candidate = depth.zero? ? parent_name : "#{parts[0...depth].join("::")}::#{parent_name}"
+          resolved = resolve_constant_name(candidate)
+          return resolved if resolved
+        end
+
+        nil
+      end
+
+      def resolve_constant_name(name, seen = {})
+        return if seen[name]
+
+        entries = resolve_entries(name)
+        return if entries.empty?
+
+        entry = entries.first
+        if entry.is_a?(::RubyIndexer::Entry::ConstantAlias)
+          seen[name] = true
+          resolve_constant_name(entry.target, seen) || entry.target
+        else
+          entry.name
+        end
       end
 
       def class_entry?(entry, seen = [])
