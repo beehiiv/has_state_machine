@@ -92,9 +92,10 @@ module Workflow
     after_transition do
       Rails.logger.info "== Post has been archived ==\n"
 
-      # You can access the previous state of the object in
-      # after_transition callbacks as well.
-      Rails.logger.info "== Transitioned from #{previous_state} ==\n"
+      # `state` and `previous_state` return ActiveSupport::StringInquirer
+      # (or nil for `previous_state` when absent), so both string comparisons
+      # and predicate inquiries like `previous_state&.published?` work.
+      Rails.logger.info "== Transitioned from #{previous_state} ==\n" if previous_state&.published?
     end
 
     # after_transition_commit runs only once the transition has been
