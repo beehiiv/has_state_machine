@@ -124,6 +124,27 @@ RSpec.describe HasStateMachine::State do
     ActiveRecord.version >= Gem::Version.new("7.2")
   end
 
+  describe ".state and #state" do
+    it "returns an ActiveSupport::StringInquirer supporting predicates and string comparisons" do
+      expect(Workflow::Swimmer::Diving.state).to be_a(ActiveSupport::StringInquirer)
+      expect(Workflow::Swimmer::Diving.state).to be_diving
+      expect(Workflow::Swimmer::Diving.state).not_to be_swimming
+
+      expect(subject.state).to be_a(ActiveSupport::StringInquirer)
+      expect(subject.state).to be_diving
+      expect(subject.state).not_to be_swimming
+      expect(subject.state == "diving").to be(true)
+      expect(subject.state === "diving").to be(true)
+      expect("diving" === subject.state).to be(true)
+      expect(subject.state.in?(%w[diving swimming])).to be(true)
+      expect(subject.state.to_s.instance_of?(String)).to be(true)
+    end
+
+    it "does not swallow unknown predicate methods on the State instance itself" do
+      expect { subject.nonexistent_predicate? }.to raise_error(NoMethodError)
+    end
+  end
+
   describe "#possible_transitions" do
     it { expect(subject.possible_transitions).to eq(%w[swimming floating tanning tubing lotioning racing relaying]) }
   end
@@ -164,10 +185,25 @@ RSpec.describe HasStateMachine::State do
         expect(object.after_transition_boolean).to be(true)
       end
 
-      it "has access to the previous state" do
+      it "has access to the previous state as a StringInquirer" do
         expect(object.previous_state).to be_nil
         subject.transition_to(:swimming)
+        expect(object.previous_state).to be_a(ActiveSupport::StringInquirer)
         expect(object.previous_state).to eq("diving")
+        expect(object.previous_state).to be_diving
+        expect(object.previous_state).not_to be_swimming
+        expect(object.previous_state === "diving").to be(true)
+        expect(object.previous_state.to_s.instance_of?(String)).to be(true)
+      end
+
+      it "returns nil for previous_state before a transition or when transitioning from nil" do
+        expect(subject.send(:previous_state)).to be_nil
+
+        object.update_column(:status, nil)
+        Workflow::Swimmer::Swimming.new(object).perform_transition!
+
+        expect(object.previous_state).to be_nil
+        expect(object.previous_state_in_commit).to be_nil
       end
 
       it "runs after_transition_commit callbacks" do
@@ -181,10 +217,13 @@ RSpec.describe HasStateMachine::State do
         expect(object.callback_sequence).to eq(%i[after_transition after_transition_commit])
       end
 
-      it "has access to the previous state in after_transition_commit" do
+      it "has access to the previous state as a StringInquirer in after_transition_commit" do
         expect(object.previous_state_in_commit).to be_nil
         subject.transition_to(:swimming)
+        expect(object.previous_state_in_commit).to be_a(ActiveSupport::StringInquirer)
         expect(object.previous_state_in_commit).to eq("diving")
+        expect(object.previous_state_in_commit).to be_diving
+        expect(object.previous_state_in_commit).not_to be_swimming
       end
 
       it "does not run after_transition_commit on an invalid transition" do
@@ -263,9 +302,12 @@ RSpec.describe HasStateMachine::State do
           expect(object.after_transition_commit_boolean).to be_falsey
         end
 
-        it "has access to the previous state in after_transition_commit" do
+        it "has access to the previous state as a StringInquirer in after_transition_commit" do
           subject.transition_to(:lotioning, needs_lotion_before: true, needs_lotion_after: true)
+          expect(object.previous_state_in_commit).to be_a(ActiveSupport::StringInquirer)
           expect(object.previous_state_in_commit).to eq("diving")
+          expect(object.previous_state_in_commit).to be_diving
+          expect(object.previous_state_in_commit).not_to be_lotioning
         end
       end
     end

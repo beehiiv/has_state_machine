@@ -243,16 +243,21 @@ RSpec.describe "Multiple state machines on one model" do
       expect(persisted_columns(episode)).to eq(%w[draft available])
     end
 
-    it "reports the previous state of each machine" do
+    it "reports the previous state and target state as StringInquirers for each machine" do
       episode.status.transition_to(:scheduled)
       episode.deletion_state.transition_to(:failed)
       episode.deletion_state.transition_to(:removing)
 
-      expect(episode.events.select { |event| event.first == :after_transition }).to eq([
+      transitions = episode.events.select { |event| event.first == :after_transition }
+      expect(transitions).to eq([
         [:after_transition, :status, "draft", "scheduled"],
         [:after_transition, :deletion_state, "available", "failed"],
         [:after_transition, :deletion_state, "failed", "removing"]
       ])
+      expect(transitions.last[2]).to be_a(ActiveSupport::StringInquirer)
+      expect(transitions.last[2]).to be_failed
+      expect(transitions.last[3]).to be_a(ActiveSupport::StringInquirer)
+      expect(transitions.last[3]).to be_removing
     end
 
     it "keeps the previous state when a callback transitions the other machine" do
