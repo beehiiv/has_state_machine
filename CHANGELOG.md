@@ -7,6 +7,13 @@ This project adheres to [Semantic Versioning](https://semver.org).
 This file is auto-generated so please do not edit it.
 
 ----
+## [1.3.2] - Nov 20, 2026
+e5b9663
+### Bug Fixes
+- * Index `has_state_machine` state attribute readers, literal `states:` predicates (including `.freeze` arrays, `prefix:`, and `suf `), and custom `workflow_namespace:` declarations directly during Ruby LSP indexing, evicting entries on file re-index and deletion.
+### Features
+-  return StringInquirer from state and previous_state (#68)
+----
 ## [1.3.1] - Oct 22, 2026
 dd7b04d
 ### Bug Fixes
