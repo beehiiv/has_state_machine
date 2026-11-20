@@ -1,23 +1,24 @@
 # frozen_string_literal: true
 
+require_relative "index_adapter"
+require_relative "namespace_registry"
 require_relative "workflow_resolver"
 
 module RubyLsp
   module HasStateMachine
     class Definition
-      SERVER_ADDON_NAME = "has_state_machine"
+      STATE_SUPERCLASS = "HasStateMachine::State"
 
-      # AR methods that return self, so `object.reload.foo` targets the model
+      # ActiveRecord methods that return self, so `object.reload.foo` targets the model
       # just like `object.foo`.
-      SELF_RETURNING_METHODS = ["reload"].freeze
+      SELF_RETURNING_METHODS = %w[reload lock!].freeze
 
-      def initialize(response_builder, _uri, node_context, dispatcher, index: nil, rails_client: nil,
-        model_name_cache: nil)
+      def initialize(response_builder, _uri, node_context, dispatcher, index: nil,
+        namespace_registry: NamespaceRegistry.instance)
         @response_builder = response_builder
         @node_context = node_context
-        @index = index
-        @rails_client = rails_client
-        @model_name_cache = model_name_cache
+        @index = IndexAdapter.new(index)
+        @namespace_registry = namespace_registry
 
         dispatcher.register(self, :on_call_node_enter)
       end
@@ -25,27 +26,27 @@ module RubyLsp
       def on_call_node_enter(node)
         return unless current_target?(node)
 
-        # Check the node shape first: resolving the model name may require a
-        # round-trip to the Rails runner, so only pay it for `object` calls.
-        if object_call?(node)
-          return unless resolved_model_name
+        is_object_call = object_call?(node)
+        is_object_method = !is_object_call && object_method_call?(node)
+        return unless is_object_call || is_object_method
+        return unless workflow_state_class?
 
-          push_entries(constant_entries(resolved_model_name))
-        elsif object_method_call?(node)
-          return unless resolved_model_name
+        model_name = resolved_model_name
+        return unless model_name
 
-          method_name = message(node)
-          entries = method_entries(resolved_model_name, method_name)
-          entries = association_entries(resolved_model_name, method_name) if entries.empty?
-          entries = constant_entries(resolved_model_name) if entries.empty?
-
-          push_entries(entries)
+        entries = if is_object_call
+          index.class_entries(model_name)
+        else
+          resolve_object_method_entries(model_name, node)
         end
+        return if entries.empty?
+
+        replace_response_entries(entries)
       end
 
       private
 
-      attr_reader :index, :model_name_cache, :node_context, :rails_client, :response_builder
+      attr_reader :index, :namespace_registry, :node_context, :response_builder
 
       def current_target?(node)
         target = node_context.node if node_context.respond_to?(:node)
@@ -54,11 +55,30 @@ module RubyLsp
         node.equal?(target) || node.equal?(call_node)
       end
 
+      def workflow_state_class?
+        return false unless current_class_name
+
+        if index.ready_for_ancestry?(STATE_SUPERCLASS)
+          ancestors = index.ancestors_of(current_class_name)
+          return ancestors.include?(STATE_SUPERCLASS) if ancestors
+        end
+
+        workflow_namespace_known?
+      end
+
+      def workflow_namespace_known?
+        return false unless workflow_namespace
+
+        namespace_registry&.key?(workflow_namespace) ||
+          workflow_namespace.start_with?(WorkflowResolver::WORKFLOW_PREFIX)
+      end
+
       def resolved_model_name
         return @resolved_model_name if defined?(@resolved_model_name)
         return @resolved_model_name = nil unless current_class_name
 
-        @resolved_model_name = model_name_from_rails(workflow_namespace) || convention_model_name
+        candidate = namespace_registry&.model_for(workflow_namespace) || convention_model_name
+        @resolved_model_name = candidate if candidate && !index.class_entries(candidate).empty?
       end
 
       def convention_model_name
@@ -77,105 +97,48 @@ module RubyLsp
         return @current_class_name if defined?(@current_class_name)
         return @current_class_name = nil unless node_context.respond_to?(:nesting)
 
-        @current_class_name = class_name_from_nesting(node_context.nesting)
+        @current_class_name = WorkflowResolver.class_name_from_nesting(node_context.nesting)
       end
 
-      def class_name_from_nesting(nesting)
-        parts = nesting.map(&:to_s).reject(&:empty?)
-        return if parts.empty?
+      def resolve_object_method_entries(model_name, node)
+        primary_name = call_name(node)
+        fallback_name = message(node)
 
-        # Nesting entries may already contain "::" (e.g. "Post::Draft").
-        parts.join("::").gsub(/:{3,}/, "::")
-      end
-
-      def model_name_from_rails(workflow_namespace)
-        return unless workflow_namespace && rails_client_available?
-
-        # Cache hits and misses for the life of the LSP process; the set of
-        # models rarely changes mid-session. Failures raise past the cache
-        # write, so a slow-to-boot Rails runner can succeed on a later request.
-        cache = model_name_cache.to_h
-        cache.fetch(workflow_namespace) do
-          cache[workflow_namespace] = request_model_name(workflow_namespace)
+        entries = index.method_entries(model_name, primary_name)
+        if entries.empty? && fallback_name && fallback_name != primary_name
+          entries = index.method_entries(model_name, fallback_name)
         end
-      rescue
-        nil
+        entries = index.class_entries(model_name) if entries.empty?
+        entries
       end
 
-      def request_model_name(workflow_namespace)
-        result = rails_client.delegate_request(
-          server_addon_name: SERVER_ADDON_NAME,
-          request_name: "model_for_workflow_namespace",
-          workflow_namespace: workflow_namespace
-        )
-
-        response_name(result)
-      end
-
-      def association_entries(model_name, association_name)
-        association_model_name = association_model_name(model_name, association_name)
-        return [] unless association_model_name
-
-        constant_entries(association_model_name)
-      end
-
-      # Delegating a request to a disconnected client (ruby-lsp-rails NullClient)
-      # never produces a response, so read_response would block forever and the
-      # convention fallback would never run.
-      def rails_client_available?
-        return false unless rails_client
-
-        !rails_client.respond_to?(:connected?) || rails_client.connected?
-      end
-
-      def association_model_name(model_name, association_name)
-        return unless rails_client_available? && rails_client.respond_to?(:association_target)
-
-        result = rails_client.association_target(model_name: model_name, association_name: association_name)
-        response_name(result)
-      rescue
-        nil
-      end
-
-      def response_name(result)
-        return unless result
-
-        result[:name] || result["name"]
-      end
-
-      def constant_entries(name)
-        return [] unless name && index
-
-        Array(index[name])
-      end
-
-      def method_entries(model_name, method_name)
-        return [] unless index && method_name
-
-        if index.respond_to?(:resolve_method)
-          entries = index.resolve_method(method_name, model_name)
-          return Array(entries)
+      # Listeners::Definition runs first and pushes State#object or guessed Object
+      # fallbacks as LocationLink. Clearing them avoids both noisy pickers and mixed
+      # Location/LocationLink arrays that fail LSP deserialization in strict clients.
+      def replace_response_entries(entries)
+        if response_builder.respond_to?(:response) && response_builder.response.is_a?(Array)
+          response_builder.response.clear
         end
 
-        Array(index[method_name]).select { |entry| entry_owner_name(entry) == model_name }
-      end
-
-      def entry_owner_name(entry)
-        owner = entry.owner if entry.respond_to?(:owner)
-        owner.name if owner.respond_to?(:name)
-      end
-
-      def push_entries(entries)
         entries.each do |entry|
           response_builder << location_for(entry)
         end
       end
 
       def location_for(entry)
-        return entry unless defined?(::RubyLsp::Interface::Location)
-
         location = entry_location(entry)
         return entry unless location
+
+        if defined?(::RubyLsp::Interface::LocationLink)
+          selection = entry_selection_location(entry) || location
+          return ::RubyLsp::Interface::LocationLink.new(
+            target_uri: entry.uri.to_s,
+            target_range: range_for(location),
+            target_selection_range: range_for(selection)
+          )
+        end
+
+        return entry unless defined?(::RubyLsp::Interface::Location)
 
         ::RubyLsp::Interface::Location.new(
           uri: entry.uri.to_s,
@@ -186,6 +149,10 @@ module RubyLsp
       def entry_location(entry)
         return entry.location if entry.respond_to?(:location)
 
+        entry.name_location if entry.respond_to?(:name_location)
+      end
+
+      def entry_selection_location(entry)
         entry.name_location if entry.respond_to?(:name_location)
       end
 
@@ -214,11 +181,22 @@ module RubyLsp
       end
 
       def object_call?(node)
-        node && receiver(node).nil? && message(node) == "object"
+        node && self_receiver?(node) && message(node) == "object"
+      end
+
+      def self_receiver?(node)
+        recv = receiver(node)
+        recv.nil? || (defined?(::Prism::SelfNode) && recv.is_a?(::Prism::SelfNode))
       end
 
       def receiver(node)
         node.receiver if node.respond_to?(:receiver)
+      end
+
+      def call_name(node)
+        return node.name.to_s if node.respond_to?(:name) && node.name
+
+        message(node)
       end
 
       def message(node)
