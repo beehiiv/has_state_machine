@@ -152,10 +152,10 @@ module HasStateMachine
 
     # Available in after_transition and after_transition_commit callbacks.
     def previous_state
-      value = @previous_state.nil? ? object.previous_changes[state_attribute]&.first : @previous_state
+      value = @previous_state || object.previous_changes[state_attribute]&.first
       return if value.nil?
 
-      value.is_a?(ActiveSupport::StringInquirer) ? value : value.to_s.inquiry
+      value.to_s.inquiry
     end
 
     def state_instance(desired_state, transient_values)
