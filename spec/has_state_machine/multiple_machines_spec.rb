@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "ruby_lsp/has_state_machine/rails_server_addon"
-
 ActiveRecord::Migration.create_table :episodes, force: true do |t|
   t.string :title
   t.string :status
@@ -705,18 +703,6 @@ RSpec.describe "Multiple state machines on one model" do
       expect(ReviewedEpisode.workflow_namespace).to eq("Workflow::ReviewedEpisode")
       expect(reviewed.status).to be_a(Workflow::ReviewedEpisode::Draft)
       expect(Workflow::ReviewedEpisode::Draft.new(reviewed).state_attribute).to eq(:status)
-    end
-  end
-
-  describe "Ruby LSP Rails server add-on" do
-    let(:stdout) { StringIO.new }
-    let(:addon) { RubyLsp::HasStateMachine::RailsServerAddon.new(stdout, StringIO.new, {}) }
-
-    it "resolves the model for a second machine's custom namespace" do
-      addon.execute("model_for_workflow_namespace", {workflow_namespace: "Workflow::EpisodeDeletion"})
-
-      result = JSON.parse(stdout.string.split("\r\n\r\n").last, symbolize_names: true)
-      expect(result).to eq(result: {name: "Episode"})
     end
   end
 end

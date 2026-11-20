@@ -4,31 +4,13 @@ require "ruby-lsp"
 require "ruby_lsp/internal"
 require "ruby_lsp/has_state_machine/addon"
 
-module RubyLspHasStateMachineAddonSpec
-  class FakeRunnerClient
-    attr_reader :registrations
-
-    def initialize(connected:)
-      @connected = connected
-      @registrations = []
-    end
-
-    def connected?
-      @connected
-    end
-
-    def register_server_addon(path)
-      @registrations << path
-    end
-  end
-
-  FakeRailsAddon = Struct.new(:rails_runner_client)
-end
-
 RSpec.describe RubyLsp::HasStateMachine::Addon do
-  let(:fakes) { RubyLspHasStateMachineAddonSpec }
   let(:addon) { described_class.new }
   let(:queue) { Queue.new }
+  let(:registry) { RubyLsp::HasStateMachine::NamespaceRegistry.instance }
+
+  before { registry.clear }
+  after { registry.clear }
 
   def drain(queue)
     messages = []
@@ -36,41 +18,51 @@ RSpec.describe RubyLsp::HasStateMachine::Addon do
     messages
   end
 
-  def stub_rails_addon(client)
-    allow(::RubyLsp::Addon).to receive(:get).and_return(fakes::FakeRailsAddon.new(client))
-  end
-
   describe "#activate" do
-    it "registers the server addon on a connected Rails runner client and logs activation" do
-      client = fakes::FakeRunnerClient.new(connected: true)
-      stub_rails_addon(client)
+    it "activates immediately without contacting Ruby LSP Rails and logs activation" do
+      allow(::RubyLsp::Addon).to receive(:get).and_raise("should not touch Ruby LSP Rails")
 
       addon.activate(nil, queue)
 
-      expect(client.registrations).to contain_exactly(a_string_ending_with("rails_server_addon.rb"))
       log = drain(queue).map { |message| message.params.message }.join("\n")
       expect(log).to include("Activating Has State Machine Ruby LSP add-on v#{HasStateMachine::VERSION}")
-      expect(log).to include("registered")
     end
+  end
 
-    it "skips registration when the Rails runner client is not connected" do
-      client = fakes::FakeRunnerClient.new(connected: false)
-      stub_rails_addon(client)
+  describe "#workspace_did_change_watched_files" do
+    it "evicts namespaces for deleted files and keeps namespaces for changed files" do
+      registry.register(
+        uri: "file:///app/models/deleted_model.rb",
+        workflow_namespace: "Workflow::Deleted",
+        model_name: "DeletedModel"
+      )
+      registry.register(
+        uri: "file:///app/models/changed_model.rb",
+        workflow_namespace: "Workflow::Changed",
+        model_name: "ChangedModel"
+      )
 
-      addon.activate(nil, queue)
+      addon.workspace_did_change_watched_files([
+        {uri: "file:///app/models/deleted_model.rb", type: RubyLsp::Constant::FileChangeType::DELETED},
+        {uri: "file:///app/models/changed_model.rb", type: RubyLsp::Constant::FileChangeType::CHANGED}
+      ])
 
-      expect(client.registrations).to be_empty
-      log = drain(queue).map { |message| message.params.message }.join("\n")
-      expect(log).to include("unavailable")
+      expect(registry.model_for("Workflow::Deleted")).to be_nil
+      expect(registry.model_for("Workflow::Changed")).to eq("ChangedModel")
     end
+  end
 
-    it "activates without the Rails addon installed" do
-      allow(::RubyLsp::Addon).to receive(:get).and_raise(::RubyLsp::Addon::AddonNotFoundError)
+  describe "#deactivate" do
+    it "clears the namespace registry" do
+      registry.register(
+        uri: "file:///app/models/subscription.rb",
+        workflow_namespace: "Workflow::SubscriptionMarketing",
+        model_name: "Subscription"
+      )
 
-      addon.activate(nil, queue)
+      addon.deactivate
 
-      log = drain(queue).map { |message| message.params.message }.join("\n")
-      expect(log).to include("Activating Has State Machine Ruby LSP add-on")
+      expect(registry.model_for("Workflow::SubscriptionMarketing")).to be_nil
     end
   end
 end
