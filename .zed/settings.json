@@ -23,6 +23,11 @@
   },
   "lsp": {
     "ruby-lsp": {
+      "initialization_options": {
+        "enabledFeatures": {
+          "onTypeFormatting": true
+        },
+      },
       "settings": {
         "use_bundler": true
       }
